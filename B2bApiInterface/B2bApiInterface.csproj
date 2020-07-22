@@ -1,0 +1,252 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{EF94A3BA-7CBB-4506-B0F7-5DB64E325FF1}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>B2bApiInterface</RootNamespace>
+    <AssemblyName>优药汇电商平台同步接口</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>youyaohui.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files\Microsoft SDKs\Azure\.NET SDK\v2.9\bin\plugins\Diagnostics\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Common\CommonHelper.cs" />
+    <Compile Include="Common\FormsToolHelper.cs" />
+    <Compile Include="frmMain.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="frmMain.designer.cs">
+      <DependentUpon>frmMain.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="frmMain.resx">
+      <DependentUpon>frmMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\licenses.licx" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\icon\查询%40128.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\icon\导出Excel%40128.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\icon\全不选%40128.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\icon\全选%40128.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\icon\打印%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BLLFactory\BLLFactory.csproj">
+      <Project>{891020f4-a8b2-41a9-9f77-acf3f920e92a}</Project>
+      <Name>BLLFactory</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BLL\BLL.csproj">
+      <Project>{4f0fb5d1-b03a-4bb6-82f6-7c52056ff85a}</Project>
+      <Name>BLL</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DALFactory\DALFactory.csproj">
+      <Project>{2b2f7cc9-d0ad-4d23-832c-e55bc957d412}</Project>
+      <Name>DALFactory</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DAL\DAL.csproj">
+      <Project>{77670403-769d-41e7-9854-a7027f723ec2}</Project>
+      <Name>DAL</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DBUtility\DBUtility.csproj">
+      <Project>{dafb4dcb-0224-45df-832c-522dbf8b7c1c}</Project>
+      <Name>DBUtility</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Facade\Facade.csproj">
+      <Project>{403828ff-469e-487a-9411-812829a91dde}</Project>
+      <Name>Facade</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\IDAL\IDAL.csproj">
+      <Project>{a58cba14-4ef5-4cb2-86e2-13045a612ec5}</Project>
+      <Name>IDAL</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Log4netHelper\Log4netUtil.csproj">
+      <Project>{04732551-029b-4dad-b721-f485fb9055c4}</Project>
+      <Name>Log4netUtil</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{7a116ae6-275a-4a14-9994-4f426d9dfc5e}</Project>
+      <Name>Model</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Util\Util.csproj">
+      <Project>{419052f3-f269-4fac-bbdf-d185bbc4adc6}</Project>
+      <Name>Util</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Clear%4032.png.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ClearLog%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Start%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Stop%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\保存%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\查看%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\处理异常%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\导出Excel%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\对码%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\浏览%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\全不选%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\全选%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\删除%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\退出%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\新增%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\修改%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\选择%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\隐藏%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\执行%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\作废%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\查询%4032.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="FastReport.ico" />
+    <Content Include="youyaohui.ico" />
+    <Content Include="yyh.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties Reactor_Deploy="0" Reactor_Output="&lt;AssemblyLocation&gt;\&lt;AssemblyFileName&gt;" Reactor_Configuration="Release" Reactor_Project="" Reactor_Commands="-necrobit 1 -nativeexe 1 -prejit 1 -suppressildasm 1 -obfuscation 1 -mapping_file 1 -antitamp 1 -stringencryption 1&#xA;-resourceencryption 1 -control_flow_obfuscation 1 -flow_level 9" Reactor_Enabled="1" />
+    </VisualStudio>
+  </ProjectExtensions>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
