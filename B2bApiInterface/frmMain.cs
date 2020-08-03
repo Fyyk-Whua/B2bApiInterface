@@ -349,7 +349,6 @@ namespace B2bApiInterface
         #endregion
 
         #region QuartzManager Function
-
         #region StartQuartzManager
         /// <summary>
         /// StartQuartzManager 启动任务管理器
@@ -508,7 +507,6 @@ namespace B2bApiInterface
             Log4netUtil.LogDisplayHelper.LogMessage(_LogAppendToForms, logMessage);
         }
         #endregion
-
         #endregion
 
         #region HideLog

@@ -29,10 +29,6 @@ namespace Model
         /// </summary>
         public string businessScopeCode { get; set; }
         /// <summary>
-        /// 经营范围描述
-        /// </summary>
-        //public string businessScopeName { get; set; }
-        /// <summary>
         /// 商品用药分类代码
         /// </summary>
         public string catagoryCode { get; set; }
@@ -49,17 +45,9 @@ namespace Model
         /// </summary>
         public string erpGoodsId { get; set; }
         /// <summary>
-        /// 商品用药一级分类
-        /// </summary>
-        public string firstLevel { get; set; }
-        /// <summary>
         /// 剂型
         /// </summary>
         public string formula { get; set; }
-        /// <summary>
-        /// 商品品说明书内容标注(功能主治、用法用量、主要成分、不良反应、禁忌等)  del 20200722
-        /// </summary>
-        //public string goodsAttr { get; set; }
         /// <summary>
         /// 商品通用名称
         /// </summary>
@@ -132,10 +120,6 @@ namespace Model
         /// 搜索关键字
         /// </summary>
         public string searchKey { get; set; }
-        /// <summary>
-        /// 商品用药二级分类
-        /// </summary>
-        public string secondLevel { get; set; }
         /// <summary>
         /// 行政区控销
         /// </summary>

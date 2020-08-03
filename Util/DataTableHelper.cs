@@ -290,12 +290,49 @@ namespace Util
         /// <returns></returns>
         public static string GetColumnValues(DataTable dtSource, string filedName)
         {
-            string[] idIn = dtSource.AsEnumerable().Select(r => r.Field<string>(filedName)).ToArray();
-            string skus = string.Format("{0}", string.Join(",", idIn));
-            return skus;
+            try
+            {
+                string[] idIn = dtSource.AsEnumerable().Select(r => r.Field<string>(filedName)).ToArray();
+                string skus = string.Format("{0}", string.Join(",", idIn));
+                return skus;
+            }
+            catch (Exception ex)
+            {
+                string logMessage = string.Format("GetColumnValues 获取某一列的所有值,逗号分隔 失败原因：{0}", ex.Message);
+                Log4netUtil.Log4NetHelper.Error(logMessage, @"DataTableHelper");
+                return string.Empty;
+
+            }
 
         }
         #endregion
+
+        #region GetColumnValuesInt 获取某一列的所有值,逗号分隔
+        /// <summary>
+        ///  GetColumnValuesInt 获取某一列的所有值,逗号分隔
+        /// </summary>
+        /// <param name="dtSource"></param>
+        /// <param name="filedName"></param>
+        /// <returns></returns>
+        public static string GetColumnValuesInt(DataTable dtSource, string filedName)
+        {
+            try
+            {
+                int[] idIn = dtSource.AsEnumerable().Select(r => r.Field<int>(filedName)).ToArray();
+                string skus = string.Format("{0}", string.Join(",", idIn));
+                return skus;
+            }catch(Exception ex)
+            {
+                string logMessage = string.Format("GetColumnValuesInt 获取某一列的所有值,逗号分隔 失败原因：{0}", ex.Message);
+                Log4netUtil.Log4NetHelper.Error(logMessage, @"DataTableHelper");
+                return string.Empty;
+            }
+
+        }
+        #endregion
+
+    
+
 
         #region ListToDataTable  实体列表转换成DataTable
         /// <summary>

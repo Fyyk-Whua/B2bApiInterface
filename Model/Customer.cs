@@ -165,6 +165,10 @@ namespace Model
         /// </summary>
         public string licenceValidate { get; set; }
         /// <summary>
+        /// 付款方式： 1线上，2线下，3货到付款  可多选,分隔
+        /// </summary>
+        public string payType { get; set; }
+        /// <summary>
         /// 
         /// </summary>
         public string qualityPrincipal { get; set; }
@@ -177,13 +181,13 @@ namespace Model
         /// </summary>
         public string scope { get; set; }
         /// <summary>
-        /// 行政区控销编号,逗号分隔 Add 20200722
+        /// 报价方式 1 批发价，2连锁价，3 药店价 ，4 医疗机构价
         /// </summary>
-        //public string sellCtrlAdmin { get; set; }
+        public string specifyQuotation { get; set; }
         /// <summary>
-        /// 商品控销,逗号分隔  Add 20200722
+        /// 0正常 ,9禁用
         /// </summary>
-        //public string sellCtrlCommodity { get; set; }
+        public int status { get; set; }
         /// <summary>
         /// 
         /// </summary>

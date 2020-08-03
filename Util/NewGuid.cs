@@ -19,6 +19,15 @@ namespace Util
             return IdWorkerHelper.GenId64();
         }
 
+
+        public static string GetIdentityGeneratorToString(string codePrefix)
+        {
+            Util.IdentityGenerator ig = new Util.IdentityGenerator();
+            long identity = ig.GetIdentity(Util.TimestampStyle.SecondTicks, 2);//同时设置上面两种精度
+            return string.Format("{0}{1}", codePrefix.Trim(),identity.ToString());
+        }
+
+
         /// <summary>
         /// 唯一订单号生成
         /// </summary>

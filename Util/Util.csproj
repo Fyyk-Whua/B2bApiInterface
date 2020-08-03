@@ -53,6 +53,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\PrintManagement\bin\Debug\DevExpress.XtraGrid.v18.1.dll</HintPath>
     </Reference>
+    <Reference Include="FluentFTP">
+      <HintPath>..\B2bApiInterface\bin\Debug\FluentFTP.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files\Microsoft SDKs\Azure\.NET SDK\v2.9\bin\plugins\Diagnostics\Newtonsoft.Json.dll</HintPath>
@@ -101,10 +104,13 @@
     <Compile Include="ExcelHelper.cs" />
     <Compile Include="ExtensionMethod.cs" />
     <Compile Include="FileHelper.cs" />
+    <Compile Include="FluentFtpHelper.cs" />
     <Compile Include="FormsModeEnum.cs" />
     <Compile Include="FtpHelper.cs" />
     <Compile Include="GetSqlParameters.cs" />
+    <Compile Include="IdentityGenerator.cs" />
     <Compile Include="IdWorkerHelper.cs" />
+    <Compile Include="ImageDownloadPrint.cs" />
     <Compile Include="ImageHelper.cs" />
     <Compile Include="INIOperationClass.cs" />
     <Compile Include="LogUtil.cs" />

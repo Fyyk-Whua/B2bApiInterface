@@ -397,13 +397,95 @@ namespace BLL
         /// <param name="dt"></param>
         /// <param name="insertTableName"></param>
         /// <returns></returns>
-        public bool BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
+        public int BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
                                        Model.JobEntity jobInfo,
                                        System.Data.DataTable dt,string insertTableName)
         {
             DALFactory.FactoryDAL fact = new DALFactory.FactoryDAL();
             IDAL.ICommonDAL idal = fact.CreateCommonDAL();
             return idal.BulkCopyInsert(logAppendToForms, jobInfo,dt, insertTableName);
+        }
+        #endregion
+
+        #region BulkInsertDatabase
+        /// <summary>
+        /// BulkInsertDatabase
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <param name="dt"></param>
+        /// <param name="insertTableName"></param>
+        /// <returns></returns>
+        public int BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
+                                       Model.JobEntity jobInfo,
+                                       string insertTableName, string strSql)
+        {
+            DALFactory.FactoryDAL fact = new DALFactory.FactoryDAL();
+            IDAL.ICommonDAL idal = fact.CreateCommonDAL();
+            return idal.BulkCopyInsert(logAppendToForms, jobInfo, insertTableName, strSql);
+        }
+        #endregion
+
+        #region ExecuteScalar
+        /// <summary>
+        /// ExecuteScalar
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="searchParam"></param>
+        /// <returns></returns>
+        public string ExecuteScalar(Log4netUtil.LogAppendToForms logAppendToForms, Model.SearchParam searchParam)
+        {
+            DALFactory.FactoryDAL fact = new DALFactory.FactoryDAL();
+            IDAL.ICommonDAL idal = fact.CreateCommonDAL();
+            return idal.ExecuteScalar(logAppendToForms, searchParam);
+        }
+        #endregion
+
+        #region FtpDownloadToFile
+        /// <summary>
+        /// FtpDownloadToFile
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <param name="ftpfilepath"></param>
+        /// <param name="fileSavePath"></param>
+        /// <param name="fileSaveName"></param>
+        /// <returns></returns>
+        public string FtpDownloadToFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo,
+                                string ftpfilepath, string fileSavePath, string fileSaveName)
+        {
+            Newtonsoft.Json.Linq.JObject jObject = new Newtonsoft.Json.Linq.JObject();
+            var ftp = new Util.FluentFtpHelper(jobInfo.ConfigInfo.FtpHostIP, jobInfo.ConfigInfo.FtpPort, jobInfo.ConfigInfo.FtpUserName, jobInfo.ConfigInfo.FtpPassword);
+            if (!ftp.Connect())
+            {
+                jObject.Add("code", "9998");
+                jObject.Add("msg", "Ftp连接异常!");
+                jObject.Add("data", string.Empty);
+                return jObject.ToString();
+            }
+            if (!ftp.isConnected())
+            {
+                jObject.Add("code", "9998");
+                jObject.Add("msg", "连接Ftp失败!");
+                jObject.Add("data", string.Empty);
+                return jObject.ToString();
+            }
+            string localDic = string.Format("{0}\\{1}", fileSavePath, fileSaveName);
+            string remotePath = ftpfilepath;
+            if (ftp.DownloadFile(fileSavePath, fileSaveName, remotePath))
+            {
+                jObject.Add("code", "0000");
+                jObject.Add("msg", "Ftp下载文件成功!");
+                jObject.Add("data", string.Empty);
+            }
+            else
+            {
+                jObject.Add("code", "9999");
+                jObject.Add("msg", string.Format("localDic：{0} ;remotePath:{1} ;Ftp下载文件失败!", localDic, remotePath));
+                jObject.Add("data", string.Empty);
+            }
+            Log4netUtil.Log4NetHelper.Error(String.Format(@"ftpDownloadToFile->下载文件 Result:{0}", jObject.ToString()), @"Ftp");
+            return jObject.ToString();
         }
         #endregion
 

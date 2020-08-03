@@ -13,6 +13,32 @@ namespace Util
 {
     public class ConvertHelper
     {
+        #region ConvertStringToDecimal
+        /// <summary>
+        /// ConvertStringToDecimal
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static decimal ConvertStringToDecimal(string value)
+        {
+            string strResult = string.IsNullOrEmpty(value) ? "0" : value;
+            return Util.Common.IsDecimal(strResult) ? Convert.ToDecimal(strResult) : 0;
+        }
+        #endregion
+
+        #region ConvertStringToInt
+        /// <summary>
+        /// ConvertStringToInt
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static decimal ConvertStringToInt(string value)
+        {
+            string strResult = string.IsNullOrEmpty(value) ? "0" : value;
+            return Util.Common.IsInt(strResult) ? Convert.ToDecimal(strResult) : 0;
+        }
+        #endregion
+
 
         #region DataGridViewToDataTable 把DataGridView控件数据，转成DataTable
         /// <summary>
@@ -473,6 +499,8 @@ namespace Util
             return query;
         }
         #endregion
+
+       
 
         #region DataTableToStrInsert
         /// <summary>

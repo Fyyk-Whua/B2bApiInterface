@@ -13,6 +13,15 @@ namespace Model
         public string SignKey { get; set; }
         public string EncryptKey { get; set; }
 
+        public string FtpHostIP { get; set; }
+        public int FtpPort { get; set; }
+        public string FtpUserName { get; set; }
+        public string FtpPassword { get; set; }
+        public string FtpRootPath { get; set; }
+        public bool FtpUsePassive { get; set; }
+        public int FtpBuffLength { get; set; }
+
+
         public string LineMessage { get; set; } = string.Empty;
         public int LogRetentionDays { get; set; }
         public int AutoAdvanceDays { get; set; }
@@ -30,6 +39,8 @@ namespace Model
         public string ServiceAndSupport { get; set; } = string.Empty;
         public double XmlFileMaxSize { get; set; } = 2.0;
         public string JobEnable { get; set; }
+        public string OrderCodePrefix { get; set; } //订单前缀 3位
+        
 
         public List<JobEntity> JobEntityList { get; set; }
     }

@@ -26,7 +26,23 @@ namespace Util
             configInfo.EncryptKey = Util.INIOperationClass.INIGetStringValue(ConfigFile, "WebApi", "EncryptKey", null);
 
 
+            configInfo.FtpHostIP = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "IP", null);
+            string ftpPort = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "PORT", null);
+            configInfo.FtpPort = Util.Common.IsInt(ftpPort) ? Convert.ToInt32(ftpPort) : 21;
 
+            configInfo.FtpUserName = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "USER", null);
+            string ftpPasswordEncrypt = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "PWD", null);
+            configInfo.FtpPassword = Util.EncAndDec.DESDecrypt(ftpPasswordEncrypt);  //解密
+
+            configInfo.FtpRootPath = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "RootPath", null);
+            string ftpBuffLength = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "BuffLength", null);
+            configInfo.FtpBuffLength = string.IsNullOrEmpty(ftpBuffLength) ? 2048 : Convert.ToInt32(ftpBuffLength);
+
+            string FtpUsePassiveStr = Util.INIOperationClass.INIGetStringValue(ConfigFile, "FTP", "UsePassive", null);
+            FtpUsePassiveStr = string.IsNullOrEmpty(FtpUsePassiveStr) ? "否" : FtpUsePassiveStr;
+            configInfo.FtpUsePassive = string.Equals(FtpUsePassiveStr, "是") ? true : false;
+
+          
             configInfo.LastLoginName = Util.INIOperationClass.INIGetStringValue(ConfigFile, "Login", "LastLoginName", null);
 
             string b2bPlatformNameStr = Util.INIOperationClass.INIGetStringValue(ConfigFile, "EnterpriseConfig", "B2bPlatformName", null);
@@ -45,6 +61,9 @@ namespace Util
             autoAdvanceDaysStr = string.IsNullOrEmpty(autoAdvanceDaysStr) ? "3" : autoAdvanceDaysStr;
             configInfo.AutoAdvanceDays = Util.Common.IsInt(autoAdvanceDaysStr) ? Convert.ToInt32(autoAdvanceDaysStr) : 3;
 
+            string orderCodePrefix = Util.INIOperationClass.INIGetStringValue(ConfigFile, "Login", "OrderCodePrefix", null);
+            configInfo.OrderCodePrefix = string.IsNullOrEmpty(orderCodePrefix) ? "FYYK" : orderCodePrefix; //订单前缀
+           
             string serviceAndSupport = Util.INIOperationClass.INIGetStringValue(ConfigFile, "Login", "ServiceAndSupport", null);
             configInfo.ServiceAndSupport = string.IsNullOrEmpty(serviceAndSupport) ? "武汉飞宇益克科技有限公司" : serviceAndSupport;
 

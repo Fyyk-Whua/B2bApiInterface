@@ -132,6 +132,7 @@ namespace Util
                     job.JobDataMap.Add("FilterBillType", jobInfo.FilterBillType);
                     job.JobDataMap.Add("WritebackProcedureName", jobInfo.WritebackProcedureName);
                     job.JobDataMap.Add("WritebackType", jobInfo.WritebackType);
+                    job.JobDataMap.Add("InsertTableName", jobInfo.InsertTableName);  //InsertTableName
 
                     job.JobDataMap.Add("CronExpression", jobInfo.CronExpression); //调式模式
                     job.JobDataMap.Add("CronExpressionDescription", jobInfo.CronExpressionDescription); //调式模式

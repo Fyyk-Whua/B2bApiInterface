@@ -34,9 +34,18 @@ namespace Facade
 
         bool ErpWriteback(Log4netUtil.LogAppendToForms logAppendToForms, Model.WritebackParam writebackParam);
 
-        bool BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
+        int BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
                                        Model.JobEntity jobInfo,
                                        System.Data.DataTable dt, string insertTableName);
+
+        int BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
+                                       Model.JobEntity jobInfo,
+                                       string insertTableName, string strSql);
+
+        string ExecuteScalar(Log4netUtil.LogAppendToForms logAppendToForms, Model.SearchParam searchParam);
+
+        string FtpDownloadToFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo,
+                               string ftpfilepath, string fileSavePath, string fileSaveName);
 
 
 
