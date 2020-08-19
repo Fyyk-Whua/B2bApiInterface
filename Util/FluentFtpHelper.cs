@@ -445,6 +445,90 @@ namespace Util
         }
         #endregion
 
+        #region 下载单文件
+        /// <summary>
+        /// 下载单文件
+        /// </summary>
+        /// <param name="localDic">本地目录(@"D:\test")</param>
+        /// <param name="downloadFileName">下载文件名称("abc.txt")</param>
+        /// <param name="remotePath">远程路径("/test/abc.txt")</param>
+        /// <returns></returns>
+        public bool DownloadImageFile(string localDic, string downloadFileName, string remotePath,out string extension)
+        {
+            Log4netUtil.Log4NetHelper.Info(String.Format(@"调用 DownloadFile->下载文件  参数 localDic：{0} ; downloadFileName: {1} ;remotePath: {2} ;", localDic, downloadFileName, remotePath), @"Ftp");
+            bool boolResult = false;
+            string strFileName = string.Empty;
+            
+            string filename = remotePath;
+            string filePath = System.IO.Path.GetDirectoryName(remotePath); //文件所在目录
+            //string downloadFilePath = System.IO.Path.GetDirectoryName(downloadFileName); //文件所在目录
+            string downloadFileNameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(downloadFileName); //文件所在目录
+            extension = ".jpg";
+            string fileNameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(filename); //没有扩展名的文件名
+            if (!IsFileExists(filename))
+            {
+                extension = ".png";// System.IO.Path.GetExtension(remotePath);//扩展名 “.aspx”
+                filename = string.Format("{0}\\{1}{2}", filePath,fileNameWithoutExtension, extension);//文件名 “Default.aspx”
+                if (!IsFileExists(filename))
+                {
+                    extension = ".jpeg";
+                    filename = string.Format("{0}\\{1}{2}", filePath,fileNameWithoutExtension, extension);//文件名
+                    if (!IsFileExists(filename))
+                    {
+                        extension = ".bmp";
+                        filename = string.Format("{0}\\{1}{2}", filePath,fileNameWithoutExtension, extension);//文件名
+                        if (!IsFileExists(filename))
+                        {
+                            Log4netUtil.Log4NetHelper.Error(String.Format(@"DownloadFile->下载文件 异常:{0}  参数 localDic：{1} ; downloadFileName: {2} ;remotePath: {3} ", "未找到.jpg;.jpeg;.png;.bmp的图片文件", localDic, downloadFileName, remotePath), @"Ftp");
+                            return boolResult;
+                        }
+                        else
+                            remotePath = filename;
+
+                    }
+                    else
+                        remotePath = filename;
+                }
+                else
+                    remotePath = filename;
+            }
+            downloadFileName = string.Format("{0}{1}", downloadFileNameWithoutExtension, extension);
+            string remotePathUrlEncode = remotePath;
+            try
+            {
+                //本地目录不存在，则自动创建
+                if (!Util.FileHelper.IsValidPathChars(localDic))
+                {
+                    Log4netUtil.Log4NetHelper.Error(String.Format(@"DownloadFile->下载文件 异常:{0}  参数 localDic：{1} ; downloadFileName: {2} ;remotePath: {3} ;remotePathUrlEncode:{4}", "目录有非法字符", localDic, downloadFileName, remotePath, remotePathUrlEncode), @"Ftp");
+                    return boolResult;
+                }
+                if (!Directory.Exists(localDic))
+                    Directory.CreateDirectory(localDic);
+                //取下载文件的文件名
+                if (string.IsNullOrEmpty(downloadFileName))
+                    strFileName = Path.GetFileName(remotePath);
+                else
+                    strFileName = downloadFileName;
+                //拼接本地路径
+                localDic = Path.Combine(localDic, strFileName);
+
+                if (Connect())
+                    boolResult = ftpClient.DownloadFile(localDic, remotePathUrlEncode, FtpLocalExists.Overwrite);
+                if (boolResult)
+                    Log4netUtil.Log4NetHelper.Info(String.Format(@"DownloadFile->下载文件成功！ ;参数 localDic：{0} ; downloadFileName: {1} ;remotePath: {2} ;", localDic, downloadFileName, remotePath), @"Ftp");
+            }
+            catch (Exception ex)
+            {
+                Log4netUtil.Log4NetHelper.Error(String.Format(@"DownloadFile->下载文件 异常:{0}  参数 localDic：{1} ; downloadFileName: {2} ;remotePath: {3} ;remotePathUrlEncode:{4}", ex.ToString(), localDic, downloadFileName, remotePath, remotePathUrlEncode), @"Ftp");
+            }
+            finally
+            {
+                DisConnect();
+            }
+            return boolResult;
+        }
+        #endregion
+
         #region 下载多文件
         /// <summary>
         /// 下载多文件

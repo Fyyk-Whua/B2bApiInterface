@@ -294,7 +294,8 @@ namespace Util
             {
                 string[] idIn = dtSource.AsEnumerable().Select(r => r.Field<string>(filedName)).ToArray();
                 string skus = string.Format("{0}", string.Join(",", idIn));
-                return skus;
+                string result  = string.Join(",", skus.Split(',').Distinct().ToArray());
+                return result;
             }
             catch (Exception ex)
             {

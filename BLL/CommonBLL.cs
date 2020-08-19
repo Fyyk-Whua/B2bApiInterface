@@ -452,19 +452,22 @@ namespace BLL
         /// <param name="fileSaveName"></param>
         /// <returns></returns>
         public string FtpDownloadToFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo,
-                                string ftpfilepath, string fileSavePath, string fileSaveName)
+                                string ftpfilepath, string fileSavePath, string fileSaveName,out string extension)
         {
             Newtonsoft.Json.Linq.JObject jObject = new Newtonsoft.Json.Linq.JObject();
             var ftp = new Util.FluentFtpHelper(jobInfo.ConfigInfo.FtpHostIP, jobInfo.ConfigInfo.FtpPort, jobInfo.ConfigInfo.FtpUserName, jobInfo.ConfigInfo.FtpPassword);
             if (!ftp.Connect())
             {
+                extension = string.Empty;
                 jObject.Add("code", "9998");
                 jObject.Add("msg", "Ftp连接异常!");
                 jObject.Add("data", string.Empty);
+
                 return jObject.ToString();
             }
             if (!ftp.isConnected())
             {
+                extension = string.Empty;
                 jObject.Add("code", "9998");
                 jObject.Add("msg", "连接Ftp失败!");
                 jObject.Add("data", string.Empty);
@@ -472,7 +475,7 @@ namespace BLL
             }
             string localDic = string.Format("{0}\\{1}", fileSavePath, fileSaveName);
             string remotePath = ftpfilepath;
-            if (ftp.DownloadFile(fileSavePath, fileSaveName, remotePath))
+            if (ftp.DownloadImageFile(fileSavePath, fileSaveName, remotePath, out extension))
             {
                 jObject.Add("code", "0000");
                 jObject.Add("msg", "Ftp下载文件成功!");

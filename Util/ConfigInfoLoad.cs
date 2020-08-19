@@ -131,6 +131,10 @@ namespace Util
 
                     string insertTableNameStr = Util.INIOperationClass.INIGetStringValue(ConfigFile, jobCode, "InsertTableName", null);
                     jobEntity.InsertTableName = string.IsNullOrEmpty(insertTableNameStr) ? string.Empty : insertTableNameStr;
+
+                    string pagesSizeStr = Util.INIOperationClass.INIGetStringValue(ConfigFile, jobCode, "PageSize", null);
+                    pagesSizeStr = string.IsNullOrEmpty(pagesSizeStr) ? "0" : pagesSizeStr;
+                    jobEntity.PageSize = Util.Common.IsInt(pagesSizeStr) ? Convert.ToInt32(pagesSizeStr) : 0; //分页上传
                     
                     JobEntityList.Add(jobEntity);
                 }

@@ -71,7 +71,7 @@ namespace BLL
                         ExecuteDataApiOrderOutWarehouseJob(logAppendToForms, jobInfo);
                         break;
                     case "DataApiOrderOutWarehouseRefund":  ///dev-api/dataApi/orderOutWarehouseRefund 同步订单出库差异退款接口
-                        //ExecuteDataApiOrderOutWarehouseRefundJob(logAppendToForms, jobInfo);
+                        ExecuteDataApiOrderOutWarehouseRefundJob(logAppendToForms, jobInfo);
                         break;
                     case "DataApiOrderInvoice":   //dev-api/dataApi/orderInvoice  同步订单发票接口
                         ExecuteDataApiOrderInvoiceJob(logAppendToForms, jobInfo);
@@ -124,6 +124,7 @@ namespace BLL
                 jobInfo.FilterBillType = jobData.GetInt("FilterBillType");
                 jobInfo.WritebackProcedureName = jobData.GetString("WritebackProcedureName");
                 jobInfo.WritebackType = jobData.GetString("WritebackType");
+                jobInfo.PageSize = jobData.GetInt("PageSize");
                 jobInfo.InsertTableName = jobData.GetString("InsertTableName");
                 jobInfo.CronExpression = jobData.GetString("CronExpression");
                 jobInfo.CronExpressionDescription = jobData.GetString("CronExpressionDescription");
@@ -166,6 +167,7 @@ namespace BLL
                 LogWarning(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
+
             List<Model.Commodity> commodityItems = new List<Model.Commodity>();
 
 
@@ -186,7 +188,8 @@ namespace BLL
                 commodityItem.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
                 //commodityItem.firstLevel = Util.DataTableHelper.DataRowContains(dr, "firstLevel");
                 commodityItem.formula = Util.DataTableHelper.DataRowContains(dr, "formula");
-
+                commodityItem.logogram = Util.DataTableHelper.DataRowContains(dr, "logogram");
+                
                 commodityItem.isMedicalInstruments = Util.DataTableHelper.DataRowContains(dr, "isMedicalInstruments");  //isMedicalInstruments Add 20200722
                 //commodityItem.goodsAttr = Util.DataTableHelper.DataRowContains(dr, "goodsAttr");
                 commodityItem.goodsName = Util.DataTableHelper.DataRowContains(dr, "goodsName");
@@ -196,6 +199,7 @@ namespace BLL
                 commodityItem.majorFunctions = Util.DataTableHelper.DataRowContains(dr, "majorFunctions"); //Add 20200722
 
                 commodityItem.manufacturer = Util.DataTableHelper.DataRowContains(dr, "manufacturer");
+                commodityItem.manufacturerLogogram = Util.DataTableHelper.DataRowContains(dr, "manufacturerLogogram");  
                 commodityItem.marketingAuthorizationHolder = Util.DataTableHelper.DataRowContains(dr, "marketingAuthorizationHolder");
                 commodityItem.middlePackAmount = Util.DataTableHelper.DataRowContainsInt(dr, "middlePackAmount");
                 commodityItem.modCount = Util.DataTableHelper.DataRowContainsInt(dr, "modCount");
@@ -218,6 +222,7 @@ namespace BLL
                 commodityItem.untowardEffect = Util.DataTableHelper.DataRowContains(dr, "untowardEffect");
                 commodityItem.usageDosage = Util.DataTableHelper.DataRowContains(dr, "usageDosage");
                 commodityItem.warnings = Util.DataTableHelper.DataRowContains(dr, "warnings");
+                commodityItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
 
                 commodityItems.Add(commodityItem);
             }
@@ -227,30 +232,48 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(commodityItems);
-            string resultJson = string.Empty;
-
-            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            int pagesSize = jobInfo.PageSize <= 0 ? commodityItems.Count() : jobInfo.PageSize;
+            int pagesCount = commodityItems.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
             {
-                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
-                string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
-                if (!string.IsNullOrEmpty(resultJsonData) || !string.Equals(resultJsonData, "[]"))
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = commodityItems.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+                var arr = pageItems.Select(x => x.taskId).ToList();
+                string taskIds = string.Format("{0}", string.Join(",", arr)); //Util.DataTableHelper.GetColumnValuesInt(commodityDt, "taskId");
+
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    logMessage = string.Format("【{0}_{1}】  {1} 部份商品失败！ 失败商品erpGoodsId:{2}", jobInfo.JobCode, jobInfo.JobName, resultJsonData);
-                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} 部份商品失败！ 失败商品erpGoodsId:{2}", jobInfo.JobCode, jobInfo.JobName, resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+
+                   
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  任务id:{2}  更新成功后回写失败， 商品taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
                 }
-                string taskIds = Util.DataTableHelper.GetColumnValuesInt(commodityDt, "taskId");
-                string taskIdsReplace = taskIds.Replace(",", string.Empty);
-                if(string.IsNullOrEmpty(taskIdsReplace))
-                {
-                    logMessage = string.Format("【{0}_{1}】  任务id:{2}  更新成功后回写失败， 商品taskId为空！！！", jobInfo.JobCode, jobInfo.JobName,taskIds);
-                    LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
-                }
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                else
+                    continue;
             }
-            else
-                return;
 
         }
         #endregion
@@ -288,14 +311,17 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
+
+
             foreach (System.Data.DataRow dr in dataTable.Rows)
             {
                 Model.CommodityImage item = new Model.CommodityImage();
                 item.base64Str =  Util.DataTableHelper.DataRowContains(dr, "base64Str"); 
                 item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
                 item.fileName = Util.DataTableHelper.DataRowContains(dr, "fileName");
-                item.fileType = Util.DataTableHelper.DataRowContains(dr, "fileType");
+                item.fileType = Util.DataTableHelper.DataRowContains(dr, "fileType").Replace(".",string.Empty);
                 item.imageType = Util.DataTableHelper.DataRowContainsInt(dr, "imageType");  //图片类型1药品图片;2正面图;3背面图;4:45度角图;5条形码图;6拆包图
+                item.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
                 items.Add(item);
             }
             if (items != null && items.Count() <= 0)
@@ -304,36 +330,52 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
-            string resultJson = string.Empty;
 
-            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            int pagesSize = jobInfo.PageSize <= 0 ? items.Count() : jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
             {
-                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
-                string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
-                if (!string.IsNullOrEmpty(resultJsonData) || !string.Equals(resultJsonData, "[]"))
-                {
-                    logMessage = string.Format("【{0}_{1}】  {1} 部份商品图片失败！ 失败商品erpGoodsId:{2}", jobInfo.JobCode, jobInfo.JobName, resultJsonData);
-                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
-                }
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
                 string taskIds = string.Empty; //Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
-                foreach (System.Data.DataRow dr in dataTable.Rows)
+                foreach (var pageItem in pageItems)
                 {
-                    string taskId = dr["taskId"].ToString();
-                    string imageType = dr["imageType"].ToString();
-                    taskIds = string.Format("{0}{1}:{2},", taskIds,taskId, imageType);
+                    string taskId = pageItem.taskId.ToString();
+                    string imageType = pageItem.imageType.ToString();
+                    taskIds = string.Format("{0}{1}:{2},", taskIds, taskId, imageType);
                 }
-                string taskIdsReplace = taskIds.Replace(",", string.Empty);
-                if (string.IsNullOrEmpty(taskIdsReplace))
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    logMessage = string.Format("【{0}_{1}】  任务id:{2} 更新成功后回写失败， 商品图片taskId为空！！！", jobInfo.JobCode, jobInfo.JobName,taskIds);
-                    LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
+                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1}  {2} 部份商品图片失败！ 失败商品erpGoodsId:{3}", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo,resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {2} 任务id:{3} 更新成功后回写失败， 商品图片taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
                 }
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                else
+                    continue;
             }
-            else
-                return;
 
         }
         #endregion
@@ -375,7 +417,7 @@ namespace BLL
                 item.lsjAbsolute = Util.DataTableHelper.DataRowContains(dr, "lsjAbsolute");
                 item.lsjMax = Util.DataTableHelper.DataRowContains(dr, "lsjMax");
                 item.lsjMin = Util.DataTableHelper.DataRowContains(dr, "lsjMin");
-
+                item.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
                 items.Add(item);
             }
             if (items != null && items.Count() <= 0)
@@ -384,31 +426,47 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
-            string resultJson = string.Empty;
-
-            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            int pagesSize = jobInfo.PageSize <= 0 ? items.Count() : jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
             {
-                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
-                string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
-                if (!string.IsNullOrEmpty(resultJsonData) || !string.Equals(resultJsonData, "[]"))
-                {
-                    logMessage = string.Format("【{0}_{1}】  {1} 部份商品价格失败！ 失败商品erpGoodsId:{2}", jobInfo.JobCode, jobInfo.JobName, resultJsonData);
-                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
-                }
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+                var arr = pageItems.Select(x => x.taskId).ToList();
+                string taskIds = string.Format("{0}", string.Join(",", arr));
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
 
-                string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
-                string taskIdsReplace = taskIds.Replace(",", string.Empty);
-                if (string.IsNullOrEmpty(taskIdsReplace))
+
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    logMessage = string.Format("【{0}_{1}】  任务id:{2}  更新成功后回写失败， 商品价格taskId为空！！！", jobInfo.JobCode, jobInfo.JobName,taskIds);
-                    LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
+                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 部份商品价格失败！ 失败商品erpGoodsId:{3}", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {2} 任务id:{3}  更新成功后回写失败， 商品价格taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
                 }
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                else
+                    continue;
             }
-            else
-                return;
 
         }
         #endregion
@@ -437,7 +495,10 @@ namespace BLL
                 LogWarning(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            List<Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
+
+           
+
+            List <Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
 
 
             foreach (System.Data.DataRow dr in dataTable.Rows)
@@ -457,10 +518,26 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
-            string resultJson = string.Empty;
 
-            CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            int pagesSize = jobInfo.PageSize<=0 ? items.Count():jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
+            {
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+                CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            }
 
         }
         #endregion
@@ -549,29 +626,48 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(customerItems);
-            string resultJson = string.Empty;
-            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            int pagesSize = jobInfo.PageSize <= 0 ? customerItems.Count() : jobInfo.PageSize;
+            int pagesCount = customerItems.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
             {
-                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
-                string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
-                if (!string.IsNullOrEmpty(resultJsonData) || !string.Equals(resultJsonData, "[]"))
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = customerItems.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+                var arr = pageItems.Select(x => x.taskId).ToList();
+                string taskIds = string.Format("{0}", string.Join(",", arr));
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum+1).ToString());
+
+
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    logMessage = string.Format("【{0}_{1}】  {1} 部份失败！ 失败erpId:{2}", jobInfo.JobCode, jobInfo.JobName, resultJsonData);
-                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1}  {2} 部份失败！ 失败erpId:{3}", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {2} 任务id:{3}  更新成功后回写失败; 客户taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
                 }
-                string taskIds = Util.DataTableHelper.GetColumnValuesInt(customerDt, "taskId");
-                string taskIdsReplace = taskIds.Replace(",", string.Empty);
-                if (string.IsNullOrEmpty(taskIdsReplace))
-                {
-                    logMessage = string.Format("【{0}_{1}】  任务id:{2}  更新成功后回写失败; 客户taskId为空！！！", jobInfo.JobCode, jobInfo.JobName,taskIds);
-                    LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
-                }
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                else
+                    continue;
             }
-            else
-                return;
 
         }
         #endregion
@@ -593,6 +689,10 @@ namespace BLL
             requestJObject.Add("dataApiCustomerList", "ExecuteDataApiCustomerListJob");
             string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(requestJObject);
             string resultJson = string.Empty;
+
+            
+            // UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), "1d015867ee5446738d39c48445a05839", string.Empty, 4);
+            //return;
             //resultJson = "{\"msg\":\"操作成功\",\"code\":200,\"data\":[{\"customerId\":\"1e24b4d465f645e7b041bf1015fc5e86\",\"customerTypeId\":1,\"companyName\":\"红太阳药店\",\"companyAddress\":\"摩尔城123号1\",\"companyLandline\":\"18911110012\",\"linkName\":\"小太阳1\",\"phone\":\"17502038345\",\"createTime\":\"2020-07-09T14:09:13.000+0800\",\"certificatesList\":[{\"imageType\":1,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/68cd69b026874e6e83206f3adaf8956c.jpg\"},{\"imageType\":2,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/06da3a351cc449978360616a33fd7ac6.jpg\"},{\"imageType\":3,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/1f2fd3984ea440299b99cb4ed7597914.jpg\"},{\"imageType\":4,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5aac2e933dd3483d97d9c340971c49b9.jpg\"},{\"imageType\":5,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/641a0a0e58504c9fb61661a962d818eb.jpg\"},{\"imageType\":6,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5ec3b06faf9247d1bc6a5786710476f9.jpg\"},{\"imageType\":7,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/18920a2ad06c45be913ec0de1ff03436.jpg\"},{\"imageType\":17,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5728224f27fa411ebfc61c995278b3c8.jpg\"},{\"imageType\":18,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/7af70afb61eb4f0e8b7044e1027fab3c.jpg\"},{\"imageType\":19,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/f887f14c2d2e4bf29038bc034bb9ac35.jpg\"}]}]}";
             //resultJson = "{\"msg\":\"操作成功\",\"code\":200,\"data\":[{\"customerId\":\"5306d86b85ab4869aa673932da6651aa\",\"customerTypeId\":0,\"companyName\":\"湖北省武汉市牛科技\",\"companyAddress\":\"湖北省武汉市武昌区\",\"companyLandline\":null,\"linkName\":\"牛科技\",\"phone\":\"17786493669\",\"createTime\":\"2020-07-25T14:24:35.000+0800\",\"certificatesList\":[]},{\"customerId\":\"a1ddb221d3294fe0b56bf87ea9c10455\",\"customerTypeId\":2,\"companyName\":\"格林优药汇\",\"companyAddress\":\"东风大道1号\",\"companyLandline\":\"\",\"linkName\":\"刘洪\",\"phone\":\"13971171880\",\"createTime\":\"2020-07-28T10:26:26.000+0800\",\"certificatesList\":[{\"imageType\":1,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/16962c990007465a9439502b0b67903a.jpg\"},{\"imageType\":2,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/21fbb5cb866d430290478aac53c36e64.jpg\"},{\"imageType\":3,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/09bd41d994134686baeaa4c179340553.jpg\"},{\"imageType\":4,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/988cf69533624d80ab17b1ce0cd9404a.jpg\"},{\"imageType\":5,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/58be8102481442fe87672cf105987d09.jpg\"},{\"imageType\":6,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/3a7b676075784fec9e49718ea97cefc2.jpg\"},{\"imageType\":7,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5d93a20777954538a99c64dfbd1b8db3.jpg\"},{\"imageType\":8,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/eac8cde0a7fc4941a1604f65d3d32ef5.jpg\"},{\"imageType\":10,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/b3a8de9d54424169ad4dee4e5bd792e7.jpg\"},{\"imageType\":11,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/b6b50ee59c2544f5bc21c465d09dd69e.jpg\"},{\"imageType\":12,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/77e776c1317b4998a828ff4db95db35d.jpg\"},{\"imageType\":13,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/b699e69e2a36435d9c26f3c4e13db00d.jpg\"},{\"imageType\":14,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/7b5c04c29d3a431284aff72ca3facb3f.jpg\"},{\"imageType\":17,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/893ba7b1ce6f4d93964ae9a0a069aae4.jpg\"},{\"imageType\":18,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/119bf0044f9b48e7a4eedf194c932fe3.jpg\"},{\"imageType\":19,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/16aa5596244e42e2b793ae8379646345.jpg\"}]},{\"customerId\":\"e81fb2eab30a4164a4b09a9640e62a18\",\"customerTypeId\":0,\"companyName\":\"yu药店02\",\"companyAddress\":\"一二三四五六七八九拾一二三四五六七八九廿一二三四五六七八九叁\",\"companyLandline\":null,\"linkName\":\"喻\",\"phone\":\"18672391726\",\"createTime\":\"2020-07-25T11:50:11.000+0800\",\"certificatesList\":[]}]}";
             //if (!string.IsNullOrEmpty(resultJson))
@@ -1041,8 +1141,8 @@ namespace BLL
                 LogWarning(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string orderIds = Util.DataTableHelper.GetColumnValues(dataTable, "orderId");
-            string[] arr = orderIds.Split(',');
+            string erpOutboundIds = Util.DataTableHelper.GetColumnValues(dataTable, "erpOutboundId");
+            string[] arr = erpOutboundIds.Split(',');
             if (arr.Count() <= 0)
             {
                 logMessage = string.Format("【{0}_{1}】  {1}失败！ 出库数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
@@ -1051,14 +1151,15 @@ namespace BLL
             }
             for (int i = 0; i < arr.Count(); i++)
             {
-                string orderId = arr[0].ToString();
-                System.Data.DataTable erpOutboundDt = Util.DataTableHelper.GetNewDataTable(dataTable, "orderId='" + orderId + "' ");
-                if (dataTable == null || dataTable.Rows.Count <= 0)
+                string erpOutboundId = arr[0].ToString();
+                System.Data.DataTable erpOutboundDt = Util.DataTableHelper.GetNewDataTable(dataTable, "erpOutboundId='" + erpOutboundId + "' ");
+                if (erpOutboundDt == null || erpOutboundDt.Rows.Count <= 0)
                 {
-                    logMessage = string.Format("【{0}_{1}】  b2b订单号{2} {1}失败！ b2b订单数据为空！！！", jobInfo.JobCode, jobInfo.JobName, orderId);
+                    logMessage = string.Format("【{0}_{1}】  出库单号{2} {1}失败！ b2b订单数据为空！！！", jobInfo.JobCode, jobInfo.JobName, erpOutboundId);
                     LogError(logAppendToForms, true, logMessage, jobLogType);
                     continue;
                 }
+                string orderId = Util.DataTableHelper.DateTableContains(erpOutboundDt,0, "orderId");
                 List<Model.OrderOutWarehouse> items = new List<Model.OrderOutWarehouse>();
                 foreach (System.Data.DataRow dr in erpOutboundDt.Rows)
                 {
@@ -1074,38 +1175,41 @@ namespace BLL
                     item.outboundTime = Util.DataTableHelper.DataRowContains(dr, "outboundTime"); //出库时间
                     item.productionDate = Util.DataTableHelper.DataRowContains(dr, "productionDate"); //生产日期
                     item.valDate = Util.DataTableHelper.DataRowContains(dr, "valDate"); //有效期
-                    //业务员核算成本价  ？？？？
-                    //业务员毛利？？？？？
+                    item.salesmanAccountingCostPrice = Util.DataTableHelper.DataRowContains(dr, "salesmanAccountingCostPrice"); //有效期//业务员核算成本价  ？？？？
+                    item.salesmanGrossProfit = Util.DataTableHelper.DataRowContains(dr, "salesmanGrossProfit"); //有效期//业务员毛利？？？？？
                     items.Add(item);
                 }
                 if (items != null && items.Count() <= 0)
                 {
-                    logMessage = string.Format("【{0}_{1}】 出库单号{2}  {1}失败！  出库实体为空！！！", jobInfo.JobCode, jobInfo.JobName, orderId);
+                    logMessage = string.Format("【{0}_{1}】 出库单号{2}  {1}失败！  出库实体为空！！！", jobInfo.JobCode, jobInfo.JobName, erpOutboundId);
                     LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
+                    continue;
                 }
                 string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
                 string resultJson = string.Empty;
 
                 if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    string erpOutboundIds = Util.DataTableHelper.GetColumnValues(dataTable, "erpOutboundI");
-                    string isOrderCompleted = ExecuteScalar(logAppendToForms, jobInfo, "", erpOutboundIds, orderId);
-                    if(string.Equals(isOrderCompleted,"Y"))
-                    {
-                        UpdateDataApiOrderOutWarehouseRefund(logAppendToForms, jobInfo, orderId, erpOutboundIds); //上传出库差异退款
-                        UpdateDataApiOrderStatus(logAppendToForms, jobInfo, orderId,7);  //B2B订单出库单已全部上传完毕
-                    }
-                    //订单是否已完成
                     string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
                     string taskIdsReplace = taskIds.Replace(",", string.Empty);
                     if (string.IsNullOrEmpty(taskIdsReplace))
                     {
                         logMessage = string.Format("【{0}_{1}】  任务Id{2}失败！  更新成功后回写 taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, taskIds);
                         LogError(logAppendToForms, true, logMessage, jobLogType);
-                        return;
+                        continue;
                     }
-                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, orderId);
+
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, erpOutboundId);
+                    //string erpOutboundIds = Util.DataTableHelper.GetColumnValues(dataTable, "erpOutboundI");
+                    //订单是否已完成
+                    string isOrderCompleted = ExecuteScalar(logAppendToForms, jobInfo, "DataApiOrderOutWarehousCompleted", erpOutboundId, orderId);
+                    if(string.Equals(isOrderCompleted,"Y"))
+                    {
+                        UpdateDataApiOrderOutWarehouseRefund(logAppendToForms, jobInfo, orderId, erpOutboundIds); //上传出库差异退款
+                        UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId,7);  //B2B订单出库单已全部上传完毕
+                    }
+                    
+                  
                 }
                 else
                     continue;
@@ -1138,40 +1242,63 @@ namespace BLL
                 LogWarning(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            List<Model.OrderOutWarehouseRefund> items = new List<Model.OrderOutWarehouseRefund>();
-
-            foreach (System.Data.DataRow dr in dataTable.Rows)
+            string orderIds = Util.DataTableHelper.GetColumnValues(dataTable, "orderId");
+            string[] arr = orderIds.Split(',');
+            if (arr.Count() <= 0)
             {
-                Model.OrderOutWarehouseRefund item = new Model.OrderOutWarehouseRefund();
-                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId"); //erp商品id
-                item.orderId = Util.DataTableHelper.DataRowContains(dr, "orderId"); //订单id
-                item.orderItemId = Util.DataTableHelper.DataRowContains(dr, "orderItemId"); //订单明细id
-                item.refundNum = Util.DataTableHelper.DataRowContainsInt(dr, "refundNum"); //退款数量
-                items.Add(item);
-            }
-            if (items != null && items.Count() <= 0)
-            {
-                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
-            string resultJson = string.Empty;
-
-            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            for (int i = 0; i < arr.Count(); i++)
             {
-                string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
-                string taskIdsReplace = taskIds.Replace(",", string.Empty);
-                if (string.IsNullOrEmpty(taskIdsReplace))
+                string orderId = arr[0].ToString();
+                System.Data.DataTable orderOutWarehouseRefundDt = Util.DataTableHelper.GetNewDataTable(dataTable, "orderId='" + orderId + "' ");
+                if (orderOutWarehouseRefundDt == null || orderOutWarehouseRefundDt.Rows.Count <= 0)
                 {
-                    logMessage = string.Format("【{0}_{1}】  任务Id{2}失败！  更新成功后回写 taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, taskIds);
+                    logMessage = string.Format("【{0}_{1}】  订单Id{2} {1}失败！ b2b订单数据为空！！！", jobInfo.JobCode, jobInfo.JobName, orderId);
                     LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
+                    continue;
                 }
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, string.Empty);
+                //string orderId = Util.DataTableHelper.DateTableContains(erpOutboundDt, 0, "orderId");
+
+                List<Model.OrderOutWarehouseRefund> items = new List<Model.OrderOutWarehouseRefund>();
+
+                foreach (System.Data.DataRow dr in orderOutWarehouseRefundDt.Rows)
+                {
+                    Model.OrderOutWarehouseRefund item = new Model.OrderOutWarehouseRefund();
+                    item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId"); //erp商品id
+                    item.erpOutboundId = Util.DataTableHelper.DataRowContains(dr, "erpOutboundId");
+                    item.orderId = Util.DataTableHelper.DataRowContains(dr, "orderId"); //订单id
+                    item.orderItemId = Util.DataTableHelper.DataRowContains(dr, "orderItemId"); //订单明细id
+                    item.refundNum = Util.DataTableHelper.DataRowContainsInt(dr, "refundNum"); //退款数量
+                    items.Add(item);
+                }
+                if (items != null && items.Count() <= 0)
+                {
+                    logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                    LogError(logAppendToForms, true, logMessage, jobLogType);
+                    continue;
+                }
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
+                string resultJson = string.Empty;
+
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+                {
+                    UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId, 7);
+                    string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  任务Id{2}失败！  更新成功后回写 taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, string.Empty);
+                }
+                else
+                    continue;
             }
-            else
-                return;
 
         }
         #endregion
@@ -1402,30 +1529,49 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(salesmanItems);
-            string resultJson = string.Empty;
-            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            int pagesSize = jobInfo.PageSize <= 0 ? salesmanItems.Count() : jobInfo.PageSize;
+            int pagesCount = salesmanItems.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
             {
-                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
-                string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
-                if (!string.IsNullOrEmpty(resultJsonData) || !string.Equals(resultJsonData, "[]"))
-                {
-                    logMessage = string.Format("【{0}_{1}】  {1} 部份失败！ 失败erpId:{2}", jobInfo.JobCode, jobInfo.JobName, resultJsonData);
-                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
-                }
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = salesmanItems.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+                var arr = pageItems.Select(x => x.taskId).ToList();
+                string taskIds = string.Format("{0}", string.Join(",", arr));
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
 
-                string taskIds = Util.DataTableHelper.GetColumnValuesInt(salesmanDt, "taskId");
-                string taskIdsReplace = taskIds.Replace(",", string.Empty);
-                if (string.IsNullOrEmpty(taskIdsReplace))
+
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    logMessage = string.Format("【{0}_{1}】  任务Id{2}   更新成功后回写 taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, taskIds);
-                    LogError(logAppendToForms, true, logMessage, jobLogType);
-                    return;
+                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 部份失败！ 失败erpId:{3}", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+
+                    //string taskIds = Util.DataTableHelper.GetColumnValuesInt(salesmanDt, "taskId");
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】 {2} 任务Id{3}   更新成功后回写 taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
                 }
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                else
+                    continue;
             }
-            else
-                return;
 
         }
         #endregion
@@ -1512,9 +1658,9 @@ namespace BLL
         }
         #endregion
 
-        #region CallDtyApi
+        #region CallB2bApi
         /// <summary>
-        /// CallDtyApi
+        /// CallB2bApi
         /// </summary>
         /// <param name="logAppendToForms"></param>
         /// <param name="jobInfo"></param>
@@ -1531,14 +1677,14 @@ namespace BLL
             Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(result);
             if (string.Equals(resultJObject.Value<int>("code"), 200))
             {
-                logMessage = string.Format("【{0}_{1}】 result:{2} 成功！ ", jobInfo.JobCode, jobInfo.JobName.ToString(), result);
+                logMessage = string.Format("【{0}_{1}】 {2} result:{3} 成功！ ", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo,result);
                 //LogMessage(logAppendToForms, true, logMessage, jobInfo.JobCode);
                 Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, jobInfo.IsDebug, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
                 return true;
             }
             else
             {
-                logMessage = string.Format("【{0}_{1}】 result:{2} ", jobInfo.JobCode, jobInfo.JobName.ToString(), result);
+                logMessage = string.Format("【{0}_{1}】 {2} result:{3} ", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, result);
                 //LogError(logAppendToForms, true, logMessage, jobInfo.JobCode);
                 Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, jobInfo.IsDebug, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
                 return false;
@@ -1701,6 +1847,7 @@ namespace BLL
             {
                 Model.OrderOutWarehouseRefund item = new Model.OrderOutWarehouseRefund();
                 item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId"); //erp商品id
+                item.erpOutboundId = Util.DataTableHelper.DataRowContains(dr, "erpOutboundId");
                 item.orderId = Util.DataTableHelper.DataRowContains(dr, "orderId"); //订单id
                 item.orderItemId = Util.DataTableHelper.DataRowContains(dr, "orderItemId"); //订单明细id
                 item.refundNum = Util.DataTableHelper.DataRowContainsInt(dr, "refundNum"); //退款数量
@@ -1923,6 +2070,9 @@ namespace BLL
                 detailsDt.Columns.Add("images", typeof(byte[]));
             if (!detailsDt.Columns.Contains("isImagesCompleted"))  //下载完成
                 detailsDt.Columns.Add("isImagesCompleted", typeof(string));
+            if (!detailsDt.Columns.Contains("fileType"))  //下载完成
+                detailsDt.Columns.Add("fileType", typeof(string));
+            
             //Ftp图片路径
             if (detailsDt.Columns.Contains("imageFtpPath"))
                 detailsDt = ImagesFtpToBytes(logAppendToForms, jobInfo, detailsDt);
@@ -1955,14 +2105,16 @@ namespace BLL
             foreach (System.Data.DataRow dataRow in dataTable.Rows)
             {
                 string logMessage = string.Empty;
-
+                string extension = string.Empty;
                 string ftpFilePath = dataRow["imageFtpPath"].ToString().Trim();
                 string fileSaveName = string.Format("{0}{1}", Guid.NewGuid().ToString(), System.IO.Path.GetExtension(ftpFilePath));
                 string fileSavePath = string.Format("{0}\\Temp\\{1}\\FtpTemp", System.Windows.Forms.Application.StartupPath.ToString(), string.Format("{0:yyyyMMdd}", DateTime.Now));
-                string result = FtpDownloadFile(logAppendToForms, jobInfo, ftpFilePath, fileSavePath, fileSaveName);
+                string result = FtpDownloadFile(logAppendToForms, jobInfo, ftpFilePath, fileSavePath, fileSaveName,out extension);
                 Newtonsoft.Json.Linq.JObject resultjObject = Newtonsoft.Json.Linq.JObject.Parse(result);
                 if (string.Equals(resultjObject["code"].ToString(), "0000"))
                 {
+                    string fileNameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(fileSaveName);
+                    fileSaveName = string.Format("{0}{1}", fileNameWithoutExtension, extension);
                     string printPathName = string.Format("{0}\\{1}", fileSavePath, fileSaveName);
                     if (System.IO.File.Exists(printPathName))
                     {
@@ -1971,6 +2123,7 @@ namespace BLL
                             string base64Str = ImageFile2Base64(printPathName);
                             dataRow["base64Str"] = base64Str;
                             dataRow["isImagesCompleted"] = "Y";
+                            dataRow["fileType"] = extension;
                             /* using (System.IO.FileStream fs = new System.IO.FileStream(printPathName, System.IO.FileMode.Open, System.IO.FileAccess.Read))  //读取文件  Image  
                              {
                                  using (System.IO.BinaryReader br = new System.IO.BinaryReader(fs))
@@ -2189,7 +2342,7 @@ namespace BLL
         /// <param name="billCode"></param>
         /// <returns></returns>
         private string FtpDownloadFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo,
-                                     string ftpfilepath, string fileSavePath, string fileSavaName)
+                                     string ftpfilepath, string fileSavePath, string fileSavaName,out string extension)
         {
             string logMessage = string.Empty;
             Newtonsoft.Json.Linq.JObject jObject = new Newtonsoft.Json.Linq.JObject();
@@ -2197,7 +2350,7 @@ namespace BLL
             {
                 BLLFactory.FactoryBLL bllfact = new BLLFactory.FactoryBLL();
                 Facade.ICommonBLL ibll = bllfact.CreateCommonBLL();
-                string result = ibll.FtpDownloadToFile(logAppendToForms, jobInfo, ftpfilepath, fileSavePath, fileSavaName);
+                string result = ibll.FtpDownloadToFile(logAppendToForms, jobInfo, ftpfilepath, fileSavePath, fileSavaName, out extension);
                 Newtonsoft.Json.Linq.JObject resultjObject = Newtonsoft.Json.Linq.JObject.Parse(result);
                 if (string.Equals(resultjObject["code"].ToString(), "0000"))
                 {
@@ -2221,6 +2374,7 @@ namespace BLL
             }
             catch (Exception ex)
             {
+                extension = string.Empty;
                 jObject.Add("code", "9999");
                 jObject.Add("msg", ex.Message);
                 jObject.Add("data", string.Format("Ftp下载失败！ 原因:{0} ;Ftp文件:{1} ", ex.Message, ftpfilepath));
@@ -2372,6 +2526,9 @@ namespace BLL
             }
         }
         #endregion
+
+
+    
 
         #region LogMessage
         /// <summary>

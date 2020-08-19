@@ -14,6 +14,10 @@ namespace Model
         /// </summary>
         public string erpGoodsId { get; set; }
         /// <summary>
+        /// erp 出库
+        /// </summary>
+        public string erpOutboundId { get; set; }
+        /// <summary>
         /// 订单Id
         /// </summary>
         public string orderId { get; set; }

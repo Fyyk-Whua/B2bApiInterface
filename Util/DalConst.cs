@@ -40,18 +40,18 @@ namespace Util
         /// <summary>
         /// 反射DAL数据访问层项目名称
         /// </summary>
-        public static readonly string AssemblyPathDAL = INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "AssemblyDAL", null);
-        public static readonly string NamespacePathDAL = INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "NamespaceDAL", null);
+        public static readonly string AssemblyPathDAL = "B2bApi4";// INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "AssemblyDAL", null);
+        public static readonly string NamespacePathDAL = "DAL";// INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "NamespaceDAL", null);
         #endregion
 
         #region 反射BLL层项目名称
         /// <summary>
         /// 反射BLL层项目名称
         /// </summary>
-        public static readonly string AssemblyPathBLL = INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "AssemblyBLL", null);
-        public static readonly string NamespacePathBLL = INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "NamespaceBLL", null);
+        public static readonly string AssemblyPathBLL = "B2bApi1";// INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "AssemblyBLL", null);
+        public static readonly string NamespacePathBLL = "BLL";// INIOperationClass.INIGetStringValue(_ConfigFile, "DBService", "NamespaceBLL", null);
         #endregion
-        
+
         #region 数据库连接字符串
 
         #region getSqlServerConnection 得到SqlServer连接字符串

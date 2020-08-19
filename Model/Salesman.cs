@@ -32,6 +32,7 @@ namespace Model
         /// 状态 0正常 9禁用
         /// </summary>
         public int status { get; set; }
+        public int taskId { get; set; }
     }
 
 }

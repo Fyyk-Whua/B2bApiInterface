@@ -27,6 +27,9 @@ namespace Model
         /// 图片类型1药品图片;2正面图;3背面图;4:45度角图;5条形码图;6拆包图
         /// </summary>
         public int imageType { get; set; }
+
+        public int taskId { get; set; }
+         
     }
 
 }

@@ -45,7 +45,7 @@ namespace Facade
         string ExecuteScalar(Log4netUtil.LogAppendToForms logAppendToForms, Model.SearchParam searchParam);
 
         string FtpDownloadToFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo,
-                               string ftpfilepath, string fileSavePath, string fileSaveName);
+                                string ftpfilepath, string fileSavePath, string fileSaveName, out string extension);
 
 
 

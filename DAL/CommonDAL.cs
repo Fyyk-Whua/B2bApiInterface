@@ -275,7 +275,7 @@ namespace DAL
                     resultJObject.Add("sql", new Newtonsoft.Json.Linq.JObject(Newtonsoft.Json.Linq.JObject.Parse(jsonSql)));
                     logMessage = string.Format("【{0}_{1}】 {2}", jobInfo.JobCode, jobInfo.JobName, Util.NewtonsoftCommon.SerializeObjToJson(resultJObject));
                     Log4netUtil.Log4NetHelper.LogError(logAppendToForms, jobInfo.IsDebug, logMessage, @"Database");
-                    return 9;
+                    return -1;
 
                 }
             }
@@ -293,7 +293,7 @@ namespace DAL
                 if (ex.Message.Contains("违反了 PRIMARY KEY 约束"))
                     return 2;
                 else
-                    return 9;
+                    return -1;
             }
 
         }

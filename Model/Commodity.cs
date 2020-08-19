@@ -8,6 +8,7 @@ namespace Model
 
     public class Commodity
     {
+        
         /// <summary>
         /// 性状 20200722
         /// </summary>
@@ -69,6 +70,10 @@ namespace Model
         /// </summary>
         public string isMedicalInstruments { get; set; }
         /// <summary>
+        /// 助记码
+        /// </summary>
+        public string logogram { get; set; }
+        /// <summary>
         /// 适应症/功能主治  20200722
         /// </summary>
         public string majorFunctions { get; set; }
@@ -76,6 +81,10 @@ namespace Model
         /// 生产厂商
         /// </summary>
         public string manufacturer { get; set; }
+        /// <summary>
+        /// 生产厂商助记码
+        /// </summary>
+        public string manufacturerLogogram { get; set; }
         /// <summary>
         /// 上市许可持有人
         /// </summary>
@@ -144,10 +153,12 @@ namespace Model
         /// 建议零售价
         /// </summary>
         public string suggestedRetailPrice { get; set; }
+
         /// <summary>
         /// 禁忌  20200722
         /// </summary>
         public string taboo { get; set; }
+        public int taskId { get; set; }
         /// <summary>
         /// 不良反应  20200722
         /// </summary>

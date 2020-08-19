@@ -9,6 +9,7 @@ namespace Model
     {
         public string JobCode { get; set; }
         public string JobName { get; set; }
+        public string JobInfo { get; set; } = string.Empty;
         public string DomainName { get; set; }  //Api 域名
         public string ServiceName { get; set; } //Api 服务器
         public string InterfacePrefix { get; set; } //Api 接口前缀
@@ -28,7 +29,7 @@ namespace Model
         public bool IsDebug { get; set; }
         public string EnterpriseId { get; set; }
         public string EnterpriseName { get; set; }
-        //public int FilterIsExportXml { get; set; }
+        public int PageSize { get; set; }  //分页上传
         public string StrConfigInfo { get; set; }
         public Model.ConfigInfo ConfigInfo { get; set; }
     }

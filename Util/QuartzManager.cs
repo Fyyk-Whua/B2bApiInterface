@@ -111,7 +111,7 @@ namespace Util
         {
             if (ValidExpression(jobInfo.CronExpression))
             {
-                Type type = GetClassInfo("BLL", "BLL.JobsItemsBLL");
+                Type type = GetClassInfo(Util.DalConst.AssemblyPathBLL, "BLL.JobsItemsBLL");  //GetClassInfo("BLL", "BLL.JobsItemsBLL");
                 if (type != null)
                 {
                     //使用组别、名称创建一个工作明细，此处为所需要执行的任务
@@ -130,6 +130,7 @@ namespace Util
                     job.JobDataMap.Add("ProcedureName", jobInfo.ProcedureName);
                     job.JobDataMap.Add("ModuleID", jobInfo.ModuleID);
                     job.JobDataMap.Add("FilterBillType", jobInfo.FilterBillType);
+                    job.JobDataMap.Add("PageSize", jobInfo.PageSize);
                     job.JobDataMap.Add("WritebackProcedureName", jobInfo.WritebackProcedureName);
                     job.JobDataMap.Add("WritebackType", jobInfo.WritebackType);
                     job.JobDataMap.Add("InsertTableName", jobInfo.InsertTableName);  //InsertTableName
@@ -151,7 +152,11 @@ namespace Util
                     trigger.Group = string.Format("{0}_{1}_TriggerGroup", jobInfo.JobCode.ToString(), jobInfo.JobName);//触发器组
                     scheduler.ScheduleJob(job, trigger); //作业和触发器设置到调度器中 
                 }
+                else
+                    Log4netUtil.Log4NetHelper.LogError(logAppendToForms, true, string.Format("{0} 定时调度任务启动失败,加载 JobsItemsBLL 类为空", jobInfo.JobName), "QuartzManager");
             }
+            else
+                Log4netUtil.Log4NetHelper.LogError(logAppendToForms, true, string.Format("{0}  定时调度任务启动失败,CronExpression{1}不是有效的表达式", jobInfo.JobName,jobInfo.CronExpression), "QuartzManager");
         }
         #endregion
 
@@ -164,7 +169,7 @@ namespace Util
         public void ScheduleDelBackUpFiles(Log4netUtil.LogAppendToForms logAppendToForms, int LogRetentionDays)  //IScheduler scheduler,
         {
 
-            Type type = GetClassInfo("BLL", "BLL.log4netDelBLL");
+            Type type = GetClassInfo(Util.DalConst.AssemblyPathBLL,"BLL.log4netDelBLL");
             if (type != null)
             {
                 //使用组别、名称创建一个工作明细，此处为所需要执行的任务
@@ -182,8 +187,8 @@ namespace Util
                 trigger.StartTimeUtc = DateTime.UtcNow;
                 trigger.Group = string.Format("{0}_TriggerGroup", "清除日志计划");//触发器组
                 scheduler.ScheduleJob(job, trigger); //作业和触发器设置到调度器中 
-            }
-
+            }else
+                Log4netUtil.Log4NetHelper.LogError(logAppendToForms,true, string.Format("定时调度任务启动失败,加载log4netDelBLL类为空{0}",string.Empty), "QuartzManager");
         }
         #endregion
 

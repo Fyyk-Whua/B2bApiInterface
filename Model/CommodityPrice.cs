@@ -38,6 +38,8 @@ namespace Model
         /// </summary>
         public string lsjMin { get; set; }
 
+        public int taskId { get; set; }
+
     }
    
 
