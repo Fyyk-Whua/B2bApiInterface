@@ -26,6 +26,11 @@ namespace Model
         /// 库存
         /// </summary>
         public int repertory { get; set; }
+        /// <summary>
+        /// 上架状态 1下架 2下架
+        /// </summary>
+        public int shelveStatus { get; set; }
+         
     }
 
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Quartz;
 using System.Drawing;
+using System.Threading;
 
 namespace BLL
 {
@@ -214,6 +215,7 @@ namespace BLL
                 //commodityItem.secondLevel = Util.DataTableHelper.DataRowContains(dr, "secondLevel");
                 commodityItem.sellCtrlAdmin = Util.DataTableHelper.DataRowContains(dr, "sellCtrlAdmin");
                 commodityItem.sellCtrlBusinessType = Util.DataTableHelper.DataRowContains(dr, "sellCtrlBusinessType");
+                commodityItem.sellingPoint = Util.DataTableHelper.DataRowContains(dr, "sellingPoint");
                 commodityItem.sellState = Util.DataTableHelper.DataRowContainsInt(dr, "sellState");
                 commodityItem.storageType = Util.DataTableHelper.DataRowContains(dr, "storageType");
                 commodityItem.store = Util.DataTableHelper.DataRowContains(dr, "store");  //store
@@ -222,6 +224,7 @@ namespace BLL
                 commodityItem.untowardEffect = Util.DataTableHelper.DataRowContains(dr, "untowardEffect");
                 commodityItem.usageDosage = Util.DataTableHelper.DataRowContains(dr, "usageDosage");
                 commodityItem.warnings = Util.DataTableHelper.DataRowContains(dr, "warnings");
+                
                 commodityItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
 
                 commodityItems.Add(commodityItem);
@@ -251,9 +254,23 @@ namespace BLL
                 string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
                 string resultJson = string.Empty;
                 jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
-                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
                 {
-                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                    }
+                }
+                if (resultStatus)
+                {
+                    resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
                     string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
                     if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
                     {
@@ -354,9 +371,23 @@ namespace BLL
                 string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
                 string resultJson = string.Empty;
                 jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
-                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
                 {
-                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                    }
+                }
+                if (resultStatus)//(CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+                {
+                    resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
                     string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
                     if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
                     {
@@ -375,7 +406,9 @@ namespace BLL
                 }
                 else
                     continue;
+                pageItems = null;
             }
+            dataTable = null;
 
         }
         #endregion
@@ -445,10 +478,22 @@ namespace BLL
                 string resultJson = string.Empty;
                 jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
 
-
-                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
                 {
-                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg,"操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                    }
+                }
+                if (resultStatus)
+                {
+                    resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
                     string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
                     if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
                     {
@@ -466,7 +511,10 @@ namespace BLL
                 }
                 else
                     continue;
+                pageItems = null;
             }
+            dataTable = null;
+            items = null;
 
         }
         #endregion
@@ -509,7 +557,7 @@ namespace BLL
                 item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
                 item.productionDate = Util.DataTableHelper.DataRowContains(dr, "productionDate");
                 item.repertory = Util.DataTableHelper.DataRowContainsInt(dr, "repertory");
-
+                item.shelveStatus = Util.DataTableHelper.DataRowContainsInt(dr, "shelveStatus");
                 items.Add(item);
             }
             if (items != null && items.Count() <= 0)
@@ -536,8 +584,24 @@ namespace BLL
                 string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
                 string resultJson = string.Empty;
                 jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
-                CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                //CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
+                {
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                    }
+                }
+                pageItems = null;
             }
+            dataTable = null;
+            items = null;
 
         }
         #endregion
@@ -618,6 +682,7 @@ namespace BLL
                 customerItem.scope = Util.DataTableHelper.DataRowContains(dr, "scope");
                 customerItem.specifyQuotation = Util.DataTableHelper.DataRowContains(dr, "specifyQuotation");
                 customerItem.twoApparatusLicenseCode = Util.DataTableHelper.DataRowContains(dr, "twoApparatusLicenseCode");
+                customerItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
                 customerItems.Add(customerItem);
             }
             if (customerItems != null && customerItems.Count() <= 0)
@@ -936,7 +1001,7 @@ namespace BLL
                 {
 
                     string orderId = item["orderId"].ToString();
-                    string orderCode = Util.NewGuid.GetIdentityGeneratorToString(jobInfo.ConfigInfo.OrderCodePrefix);//Util.NewGuid.GetSnowflakeIdWorkerToString();
+                    string orderCode = item["orderCode"].ToString();  //Util.NewGuid.GetIdentityGeneratorToString(jobInfo.ConfigInfo.OrderCodePrefix);//Util.NewGuid.GetSnowflakeIdWorkerToString();
                     Newtonsoft.Json.Linq.JObject itemJObject = (Newtonsoft.Json.Linq.JObject)item;
 
                     string strOrderCommodityList = itemJObject["orderCommodityList"].ToString();
@@ -1190,7 +1255,7 @@ namespace BLL
 
                 if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
-                    string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
+                    string taskIds = Util.DataTableHelper.GetColumnValuesInt(erpOutboundDt, "taskId");
                     string taskIdsReplace = taskIds.Replace(",", string.Empty);
                     if (string.IsNullOrEmpty(taskIdsReplace))
                     {
@@ -1205,7 +1270,7 @@ namespace BLL
                     string isOrderCompleted = ExecuteScalar(logAppendToForms, jobInfo, "DataApiOrderOutWarehousCompleted", erpOutboundId, orderId);
                     if(string.Equals(isOrderCompleted,"Y"))
                     {
-                        UpdateDataApiOrderOutWarehouseRefund(logAppendToForms, jobInfo, orderId, erpOutboundIds); //上传出库差异退款
+                        UpdateDataApiOrderOutWarehouseRefund(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderOutWarehouseRefund", "同步订单出库差异退款接口"), orderId, erpOutboundIds); //上传出库差异退款
                         UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId,7);  //B2B订单出库单已全部上传完毕
                     }
                     
@@ -1286,7 +1351,7 @@ namespace BLL
                 if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
                 {
                     UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId, 7);
-                    string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
+                    string taskIds = Util.DataTableHelper.GetColumnValuesInt(orderOutWarehouseRefundDt, "taskId");
                     string taskIdsReplace = taskIds.Replace(",", string.Empty);
                     if (string.IsNullOrEmpty(taskIdsReplace))
                     {
@@ -1864,8 +1929,17 @@ namespace BLL
 
             if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
             {
-                string orderIds = Util.DataTableHelper.GetColumnValues(dataTable, "orderId");
-                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), orderIds, resultJson);
+                //string orderIds = Util.DataTableHelper.GetColumnValues(dataTable, "orderId");
+                string taskIds = Util.DataTableHelper.GetColumnValuesInt(dataTable, "taskId");
+                string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                if (string.IsNullOrEmpty(taskIdsReplace))
+                {
+                    logMessage = string.Format("【{0}_{1}】  任务Id{2}失败！  更新成功后回写 taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, taskIds);
+                    LogError(logAppendToForms, true, logMessage, jobLogType);
+                    return false ;
+                }
+                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, string.Empty);
+                //ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), orderIds, resultJson);
                 return true;
             }
             else
@@ -1934,14 +2008,14 @@ namespace BLL
             resultJobInfo.ApiModuleType = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "ModuleType", null); //jobData.GetString("ApiModuleType");
             resultJobInfo.ApiRequestType = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "RequestType", null); //jobData.GetString("ApiRequestType");
 
-            resultJobInfo.TargetDatabase = jobInfo.TargetDatabase;
-            resultJobInfo.ProcedureName = jobInfo.ProcedureName;
-            resultJobInfo.ModuleID = jobInfo.ModuleID;
-            resultJobInfo.FilterBillType = jobInfo.FilterBillType;
-            resultJobInfo.WritebackProcedureName = jobInfo.WritebackProcedureName;
-            resultJobInfo.WritebackType = jobInfo.WritebackType;
-            resultJobInfo.InsertTableName = jobInfo.InsertTableName;
-            resultJobInfo.CronExpression = jobInfo.CronExpression;
+            resultJobInfo.TargetDatabase = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "TargetDatabase", null);  //jobInfo.TargetDatabase;
+            resultJobInfo.ProcedureName = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "ProcedureName", null);  //jobInfo.ProcedureName;
+            resultJobInfo.ModuleID = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "ModuleID", null);  //jobInfo.ModuleID;
+            resultJobInfo.FilterBillType =  jobInfo.FilterBillType;
+            resultJobInfo.WritebackProcedureName = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "WritebackProcedureName", null);  //jobInfo.WritebackProcedureName;
+            resultJobInfo.WritebackType = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "WritebackType", null);  //jobInfo.WritebackType;
+            resultJobInfo.InsertTableName = Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, jobCode, "InsertTableName", null); //jobInfo.InsertTableName;
+            resultJobInfo.CronExpression =  jobInfo.CronExpression;
             resultJobInfo.CronExpressionDescription = jobInfo.CronExpressionDescription;
 
             resultJobInfo.EnterpriseId = jobInfo.EnterpriseId;
@@ -2526,9 +2600,6 @@ namespace BLL
             }
         }
         #endregion
-
-
-    
 
         #region LogMessage
         /// <summary>

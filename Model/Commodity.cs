@@ -8,7 +8,6 @@ namespace Model
 
     public class Commodity
     {
-        
         /// <summary>
         /// 性状 20200722
         /// </summary>
@@ -138,6 +137,10 @@ namespace Model
         /// </summary>
         public string sellCtrlBusinessType { get; set; }
         /// <summary>
+        /// 卖点
+        /// </summary>
+        public string sellingPoint { get; set; }
+        /// <summary>
         /// 销售状态
         /// </summary>
         public int sellState { get; set; }
@@ -153,11 +156,13 @@ namespace Model
         /// 建议零售价
         /// </summary>
         public string suggestedRetailPrice { get; set; }
-
         /// <summary>
         /// 禁忌  20200722
         /// </summary>
         public string taboo { get; set; }
+        /// <summary>
+        /// taboo
+        /// </summary>
         public int taskId { get; set; }
         /// <summary>
         /// 不良反应  20200722
