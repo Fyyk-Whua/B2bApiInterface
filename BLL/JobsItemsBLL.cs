@@ -10,6 +10,7 @@ namespace BLL
 {
 
     //不允许此 Job 并发执行任务（禁止新开线程执行）
+    [PersistJobDataAfterExecution]
     [DisallowConcurrentExecution]
     public sealed class JobsItemsBLL : IJob
     {
@@ -33,6 +34,7 @@ namespace BLL
             {
                 logMessage = string.Format("【Execute】GetJobEntity执行异常 jobInfo为空！{0}",string.Empty);
                 LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
             }
             try
             {
@@ -52,6 +54,9 @@ namespace BLL
                         break;
                     case "DataApiCustomer":   ///dev-api/dataApi/customer   同步客户数据接口
                         ExecuteDataApiCustomerJob(logAppendToForms, jobInfo);
+                        break;
+                    case "DataApiCustomerTest":   ///dev-api/dataApi/customer   同步客户数据接口
+                        ExecuteDataApiCustomerTestJob(logAppendToForms, jobInfo);
                         break;
                     case "DataApiCustomerList":   ///dev-api/dataApi/customerList 获取新注册客户数据接口
                         ExecuteDataApiCustomerListJob(logAppendToForms, jobInfo);
@@ -82,6 +87,21 @@ namespace BLL
                         break;
                     case "DataApiOrderQualityInspectionImage":   ///dev-api/dataApi/orderQualityInspectionImage 上传订单质检图片数据接口
                         break;
+                    case "DataApiGoodsSpike":   ///商品秒杀
+                        ExecuteDataApiGoodsSpikeJob(logAppendToForms, jobInfo);
+                        break;
+                    case "GoodsSpikeTask":   ///商品秒杀定时任务
+                        ExecuteGoodsSpikeTaskJob(logAppendToForms, jobInfo);
+                        break;
+                    case "DataApiCommodityPriceAsync":   ///dev-api/dataApi/commodityPriceAsync  同步商品价格接口(导步)
+                        ExecuteCommodityPriceAsyncJob(logAppendToForms, jobInfo);
+                        break;
+                    case "DataApiCommodityRepertoryAsync":   ///dev-api/dataApi/commodityRepertoryAsync  同步商品库存接口(导步)
+                        ExecuteCommodityRepertoryAsyncJob(logAppendToForms, jobInfo);
+                        break;
+                    case "DataApiGetAsyncFailCommodity":   ///dev-api/dataApi/getAsyncFailCommodity  获取异步任务失败接口
+                        ExecuteGetAsyncFailCommodityJob(logAppendToForms, jobInfo);
+                        break;
                     default:
                         break;
                 }
@@ -92,6 +112,7 @@ namespace BLL
             {
                 logMessage = string.Format("【{0}_{1}】 Execute 执行发生异常:{2}", jobInfo.JobCode, jobInfo.JobName.ToString(), ex.ToString());
                 LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
             }
 
         }
@@ -144,6 +165,8 @@ namespace BLL
         }
         #endregion
 
+
+        
         #region ExecuteDataApiCommodityJob    同步商品数据接口
         /// <summary>
         /// ExecuteDataApiCommodityJob  同步商品数据接口
@@ -190,7 +213,7 @@ namespace BLL
                 //commodityItem.firstLevel = Util.DataTableHelper.DataRowContains(dr, "firstLevel");
                 commodityItem.formula = Util.DataTableHelper.DataRowContains(dr, "formula");
                 commodityItem.logogram = Util.DataTableHelper.DataRowContains(dr, "logogram");
-                
+
                 commodityItem.isMedicalInstruments = Util.DataTableHelper.DataRowContains(dr, "isMedicalInstruments");  //isMedicalInstruments Add 20200722
                 //commodityItem.goodsAttr = Util.DataTableHelper.DataRowContains(dr, "goodsAttr");
                 commodityItem.goodsName = Util.DataTableHelper.DataRowContains(dr, "goodsName");
@@ -200,7 +223,7 @@ namespace BLL
                 commodityItem.majorFunctions = Util.DataTableHelper.DataRowContains(dr, "majorFunctions"); //Add 20200722
 
                 commodityItem.manufacturer = Util.DataTableHelper.DataRowContains(dr, "manufacturer");
-                commodityItem.manufacturerLogogram = Util.DataTableHelper.DataRowContains(dr, "manufacturerLogogram");  
+                commodityItem.manufacturerLogogram = Util.DataTableHelper.DataRowContains(dr, "manufacturerLogogram");
                 commodityItem.marketingAuthorizationHolder = Util.DataTableHelper.DataRowContains(dr, "marketingAuthorizationHolder");
                 commodityItem.middlePackAmount = Util.DataTableHelper.DataRowContainsInt(dr, "middlePackAmount");
                 commodityItem.modCount = Util.DataTableHelper.DataRowContainsInt(dr, "modCount");
@@ -219,12 +242,15 @@ namespace BLL
                 commodityItem.sellState = Util.DataTableHelper.DataRowContainsInt(dr, "sellState");
                 commodityItem.storageType = Util.DataTableHelper.DataRowContains(dr, "storageType");
                 commodityItem.store = Util.DataTableHelper.DataRowContains(dr, "store");  //store
-                commodityItem.suggestedRetailPrice = Util.DataTableHelper.DataRowContains(dr, "suggestedRetailPrice");
+                commodityItem.suggestedRetailPrice = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "suggestedRetailPrice"), 2, MidpointRounding.AwayFromZero).ToString("F2");//   suggestedRetailPrice.ToString("F2");
                 commodityItem.taboo = Util.DataTableHelper.DataRowContains(dr, "taboo");
                 commodityItem.untowardEffect = Util.DataTableHelper.DataRowContains(dr, "untowardEffect");
                 commodityItem.usageDosage = Util.DataTableHelper.DataRowContains(dr, "usageDosage");
                 commodityItem.warnings = Util.DataTableHelper.DataRowContains(dr, "warnings");
-                
+                commodityItem.sellingPoint = Util.DataTableHelper.DataRowContains(dr, "sellingPoint");
+                commodityItem.activityType = Util.DataTableHelper.DataRowContainsInt(dr, "activityType");
+                commodityItem.activityStartTime = string.Empty;
+                commodityItem.activityEndTime = string.Empty;
                 commodityItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
 
                 commodityItems.Add(commodityItem);
@@ -290,8 +316,11 @@ namespace BLL
                 }
                 else
                     continue;
+                pageItems = null;
             }
-
+            commodityDt = null;
+            commodityItems = null;
+            jobInfo = null;
         }
         #endregion
 
@@ -328,9 +357,9 @@ namespace BLL
                 LogError(logAppendToForms, true, logMessage, jobLogType);
                 return;
             }
-
-
-            foreach (System.Data.DataRow dr in dataTable.Rows)
+            //isImagesCompleted
+            System.Data.DataTable imageDetailsDt = Util.DataTableHelper.GetNewDataTable(dataTable, "isImagesCompleted='Y' ");
+            foreach (System.Data.DataRow dr in imageDetailsDt.Rows)
             {
                 Model.CommodityImage item = new Model.CommodityImage();
                 item.base64Str =  Util.DataTableHelper.DataRowContains(dr, "base64Str"); 
@@ -406,10 +435,13 @@ namespace BLL
                 }
                 else
                     continue;
-                pageItems = null;
+                pageItems.Clear();
             }
+            imageDetailsDt.Clear();
+            dataTable.Clear();
+            imageDetailsDt = null;
             dataTable = null;
-
+            jobInfo = null;
         }
         #endregion
    
@@ -446,10 +478,10 @@ namespace BLL
                 item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
                 item.limitMax = Util.DataTableHelper.DataRowContainsInt(dr, "limitMax");
                 item.limitMin = Util.DataTableHelper.DataRowContainsInt(dr, "limitMin");
-                item.lsj = Util.DataTableHelper.DataRowContains(dr, "lsj");
-                item.lsjAbsolute = Util.DataTableHelper.DataRowContains(dr, "lsjAbsolute");
-                item.lsjMax = Util.DataTableHelper.DataRowContains(dr, "lsjMax");
-                item.lsjMin = Util.DataTableHelper.DataRowContains(dr, "lsjMin");
+                item.lsj = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsj"), 2, MidpointRounding.AwayFromZero).ToString("F2");// item.lsj = Util.DataTableHelper.DataRowContains(dr, "lsj");
+                item.lsjAbsolute = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsjAbsolute"), 2, MidpointRounding.AwayFromZero).ToString("F2");// Util.DataTableHelper.DataRowContains(dr, "lsjAbsolute");
+                item.lsjMax = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsjMax"), 2, MidpointRounding.AwayFromZero).ToString("F2");//  Util.DataTableHelper.DataRowContains(dr, "lsjMax");
+                item.lsjMin = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsjMin"), 2, MidpointRounding.AwayFromZero).ToString("F2");//  Util.DataTableHelper.DataRowContains(dr, "lsjMin");
                 item.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
                 items.Add(item);
             }
@@ -515,7 +547,7 @@ namespace BLL
             }
             dataTable = null;
             items = null;
-
+            jobInfo = null;
         }
         #endregion
 
@@ -592,20 +624,409 @@ namespace BLL
                     string msg = resultJObject["msg"].ToString();
                     if (string.Equals(msg, "操作超时"))
                     {
-                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，第二次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
                         LogWarning(logAppendToForms, true, logMessage, jobLogType);
                         Thread.Sleep(5000);//休眠时间
                         resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                        resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                        if (!resultStatus)
+                        {
+                            msg = resultJObject["msg"].ToString();
+                            if (string.Equals(msg, "操作超时"))
+                            {
+                                logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时10秒，第三次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                                Thread.Sleep(10000);//休眠时间
+                                resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+
+                            }
+                        }
+
                     }
                 }
                 pageItems = null;
             }
             dataTable = null;
             items = null;
-
+            jobInfo = null;
         }
         #endregion
-        
+
+        #region ExecuteCommodityPriceAsyncJob    同步商品价格接口（异步）
+        /// <summary>
+        /// ExecuteCommodityPriceAsyncJob  同步商品价格接口（异步）
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void ExecuteCommodityPriceAsyncJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            System.Data.DataTable dataTable = GetUpdataDataTable(logAppendToForms, jobInfo);
+            if (dataTable == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            List<Model.CommodityPrice> items = new List<Model.CommodityPrice>();
+
+
+            foreach (System.Data.DataRow dr in dataTable.Rows)
+            {
+                Model.CommodityPrice item = new Model.CommodityPrice();
+                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
+                item.limitMax = Util.DataTableHelper.DataRowContainsInt(dr, "limitMax");
+                item.limitMin = Util.DataTableHelper.DataRowContainsInt(dr, "limitMin");
+                item.lsj = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsj"), 2, MidpointRounding.AwayFromZero).ToString("F2");// item.lsj = Util.DataTableHelper.DataRowContains(dr, "lsj");
+                item.lsjAbsolute = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsjAbsolute"), 2, MidpointRounding.AwayFromZero).ToString("F2");// Util.DataTableHelper.DataRowContains(dr, "lsjAbsolute");
+                item.lsjMax = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsjMax"), 2, MidpointRounding.AwayFromZero).ToString("F2");//  Util.DataTableHelper.DataRowContains(dr, "lsjMax");
+                item.lsjMin = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "lsjMin"), 2, MidpointRounding.AwayFromZero).ToString("F2");//  Util.DataTableHelper.DataRowContains(dr, "lsjMin");
+                item.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
+                items.Add(item);
+            }
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            int pagesSize = jobInfo.PageSize <= 0 ? items.Count() : jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
+            {
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+                var arr = pageItems.Select(x => x.taskId).ToList();
+                string taskIds = string.Format("{0}", string.Join(",", arr));
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
+                {
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                    }
+                }
+                if (resultStatus)
+                {
+                    resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 部份商品价格失败！ 失败商品erpGoodsId:{3}", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {2} 任务id:{3}  更新成功后回写失败， 商品价格taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                }
+                else
+                    continue;
+                pageItems = null;
+            }
+            dataTable = null;
+            items = null;
+            jobInfo = null;
+        }
+        #endregion
+
+        #region ExecuteCommodityRepertoryAsyncJob    同步商品库存接口（异步）
+        /// <summary>
+        /// ExecuteCommodityRepertoryAsyncJob  同步商品库存接口（异步）
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void ExecuteCommodityRepertoryAsyncJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            System.Data.DataTable dataTable = GetUpdataDataTable(logAppendToForms, jobInfo);
+            if (dataTable == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+
+
+            List<Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
+
+
+            foreach (System.Data.DataRow dr in dataTable.Rows)
+            {
+                Model.CommodityRepertory item = new Model.CommodityRepertory();
+
+                item.dateExpiration = Util.DataTableHelper.DataRowContains(dr, "dateExpiration");  //dateExpiration
+                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
+                item.productionDate = Util.DataTableHelper.DataRowContains(dr, "productionDate");
+                item.repertory = Util.DataTableHelper.DataRowContainsInt(dr, "repertory");
+                item.shelveStatus = Util.DataTableHelper.DataRowContainsInt(dr, "shelveStatus");
+                items.Add(item);
+            }
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+            int pagesSize = jobInfo.PageSize <= 0 ? items.Count() : jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
+            {
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+                //CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
+                {
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，第二次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                        resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                        if (!resultStatus)
+                        {
+                            msg = resultJObject["msg"].ToString();
+                            if (string.Equals(msg, "操作超时"))
+                            {
+                                logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时10秒，第三次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                                Thread.Sleep(10000);//休眠时间
+                                resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+
+                            }
+                        }
+
+                    }
+                }
+                pageItems = null;
+            }
+            dataTable = null;
+            items = null;
+            jobInfo = null;
+        }
+        #endregion
+
+
+        #region ExecuteGetAsyncFailCommodityJob    获取异步任务失败接口
+        /// <summary>
+        /// ExecuteGetAsyncFailCommodityJob  获取异步任务失败接口
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void ExecuteGetAsyncFailCommodityJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+
+
+            var requestJObject = new Newtonsoft.Json.Linq.JObject();
+            requestJObject.Add("key", "repertory_1601355485829");
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(requestJObject);
+            string resultJson = string.Empty;
+
+
+            // UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), "1d015867ee5446738d39c48445a05839", string.Empty, 4);
+            //return;
+            //resultJson = "{\"msg\":\"操作成功\",\"code\":200,\"data\":[{\"customerId\":\"1e24b4d465f645e7b041bf1015fc5e86\",\"customerTypeId\":1,\"companyName\":\"红太阳药店\",\"companyAddress\":\"摩尔城123号1\",\"companyLandline\":\"18911110012\",\"linkName\":\"小太阳1\",\"phone\":\"17502038345\",\"createTime\":\"2020-07-09T14:09:13.000+0800\",\"certificatesList\":[{\"imageType\":1,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/68cd69b026874e6e83206f3adaf8956c.jpg\"},{\"imageType\":2,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/06da3a351cc449978360616a33fd7ac6.jpg\"},{\"imageType\":3,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/1f2fd3984ea440299b99cb4ed7597914.jpg\"},{\"imageType\":4,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5aac2e933dd3483d97d9c340971c49b9.jpg\"},{\"imageType\":5,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/641a0a0e58504c9fb61661a962d818eb.jpg\"},{\"imageType\":6,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5ec3b06faf9247d1bc6a5786710476f9.jpg\"},{\"imageType\":7,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/18920a2ad06c45be913ec0de1ff03436.jpg\"},{\"imageType\":17,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5728224f27fa411ebfc61c995278b3c8.jpg\"},{\"imageType\":18,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/7af70afb61eb4f0e8b7044e1027fab3c.jpg\"},{\"imageType\":19,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/f887f14c2d2e4bf29038bc034bb9ac35.jpg\"}]}]}";
+            //resultJson = "{\"msg\":\"操作成功\",\"code\":200,\"data\":[{\"customerId\":\"5306d86b85ab4869aa673932da6651aa\",\"customerTypeId\":0,\"companyName\":\"湖北省武汉市牛科技\",\"companyAddress\":\"湖北省武汉市武昌区\",\"companyLandline\":null,\"linkName\":\"牛科技\",\"phone\":\"17786493669\",\"createTime\":\"2020-07-25T14:24:35.000+0800\",\"certificatesList\":[]},{\"customerId\":\"a1ddb221d3294fe0b56bf87ea9c10455\",\"customerTypeId\":2,\"companyName\":\"格林优药汇\",\"companyAddress\":\"东风大道1号\",\"companyLandline\":\"\",\"linkName\":\"刘洪\",\"phone\":\"13971171880\",\"createTime\":\"2020-07-28T10:26:26.000+0800\",\"certificatesList\":[{\"imageType\":1,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/16962c990007465a9439502b0b67903a.jpg\"},{\"imageType\":2,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/21fbb5cb866d430290478aac53c36e64.jpg\"},{\"imageType\":3,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/09bd41d994134686baeaa4c179340553.jpg\"},{\"imageType\":4,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/988cf69533624d80ab17b1ce0cd9404a.jpg\"},{\"imageType\":5,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/58be8102481442fe87672cf105987d09.jpg\"},{\"imageType\":6,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/3a7b676075784fec9e49718ea97cefc2.jpg\"},{\"imageType\":7,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/5d93a20777954538a99c64dfbd1b8db3.jpg\"},{\"imageType\":8,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/eac8cde0a7fc4941a1604f65d3d32ef5.jpg\"},{\"imageType\":10,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/b3a8de9d54424169ad4dee4e5bd792e7.jpg\"},{\"imageType\":11,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/b6b50ee59c2544f5bc21c465d09dd69e.jpg\"},{\"imageType\":12,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/77e776c1317b4998a828ff4db95db35d.jpg\"},{\"imageType\":13,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/b699e69e2a36435d9c26f3c4e13db00d.jpg\"},{\"imageType\":14,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/7b5c04c29d3a431284aff72ca3facb3f.jpg\"},{\"imageType\":17,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/893ba7b1ce6f4d93964ae9a0a069aae4.jpg\"},{\"imageType\":18,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/119bf0044f9b48e7a4eedf194c932fe3.jpg\"},{\"imageType\":19,\"imageUrl\":\"http://oss.hbglyy.cn/img/certificates/16aa5596244e42e2b793ae8379646345.jpg\"}]},{\"customerId\":\"e81fb2eab30a4164a4b09a9640e62a18\",\"customerTypeId\":0,\"companyName\":\"yu药店02\",\"companyAddress\":\"一二三四五六七八九拾一二三四五六七八九廿一二三四五六七八九叁\",\"companyLandline\":null,\"linkName\":\"喻\",\"phone\":\"18672391726\",\"createTime\":\"2020-07-25T11:50:11.000+0800\",\"certificatesList\":[]}]}";
+            //if (!string.IsNullOrEmpty(resultJson))
+            if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+            {
+                /* Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                 string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                 if (string.IsNullOrEmpty(resultJsonData) || string.Equals(resultJsonData, "[]"))
+                 {
+                     logMessage = string.Format("【{0}_{1}】  {1} 无新注册客户！！！", jobInfo.JobCode, jobInfo.JobName);
+                     LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                     return;
+                 }
+                 Newtonsoft.Json.Linq.JArray orderJArray = Newtonsoft.Json.Linq.JArray.Parse(resultJsonData);
+                 if (orderJArray.Count() <= 0)
+                 {
+                     logMessage = string.Format("【{0}_{1}】  {1} 新注册客户主表失败！ 返回orderJArray数组为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                     LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                     return;
+                 }
+                 foreach (var item in orderJArray)
+                 {
+                     string companyName = item["companyName"].ToString();
+                     string customerId = item["customerId"].ToString();
+                     //UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                     //continue;
+                     Newtonsoft.Json.Linq.JObject itemJObject = (Newtonsoft.Json.Linq.JObject)item;
+                     string strCertificatesList = itemJObject["certificatesList"].ToString();
+                     Newtonsoft.Json.Linq.JArray jArrayCertificatesList = new Newtonsoft.Json.Linq.JArray();
+                     if (string.IsNullOrEmpty(strCertificatesList) || string.Equals(strCertificatesList, "[]"))
+                     {
+                         logMessage = string.Format("【{0}_{1}】  客户名称:{2} ;客户Id:{3}   证照图片资料失败！ 返回certificatesList数组为空！！！", jobInfo.JobCode, jobInfo.JobName, companyName, customerId);
+                         LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                         itemJObject.Remove("certificatesList");
+                         //continue;
+                     }
+                     else
+                     {
+                         jArrayCertificatesList = Newtonsoft.Json.Linq.JArray.Parse(strCertificatesList); //(Newtonsoft.Json.Linq.JArray)item["certificatesList"];
+                         itemJObject.Remove("certificatesList");
+                     }
+                     string itemJObjectJson = itemJObject.ToString();
+                     Newtonsoft.Json.Linq.JArray jArrayOrder = new Newtonsoft.Json.Linq.JArray();//Util.NewtonsoftCommon.ConvertJsonToJArray(logAppendToForms, jobInfo, itemJObjectJson);
+                     jArrayOrder.Add(itemJObject);
+                     System.Data.DataTable dataTable = Util.NewtonsoftCommon.ConvertJArrayToDataTable(logAppendToForms, jobInfo, jArrayOrder);
+                     if (dataTable == null || dataTable.Rows.Count <= 0)
+                     {
+                         logMessage = string.Format("【{0}_{1}】  客户名称:{2} ;客户Id:{3}  转换DataTable失败！！！", jobInfo.JobCode, jobInfo.JobName, companyName, customerId);
+                         LogError(logAppendToForms, true, logMessage, jobLogType);
+                         UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                         continue;
+                     }
+                     if (!dataTable.Columns.Contains("updated"))
+                         dataTable.Columns.Add("updated", typeof(string));
+                     string updated = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                     foreach (System.Data.DataRow itemsDr in dataTable.Rows)
+                     {
+                         itemsDr["customerId"] = customerId;
+                         itemsDr["updated"] = updated;
+                     }
+                     string insertTableName = string.Empty;
+                     if (string.IsNullOrEmpty(jobInfo.InsertTableName))
+                     {
+                         logMessage = string.Format("【{0}_{1}】  {1}失败 未定义新注册客户表！！！", jobInfo.JobCode, jobInfo.JobName);
+                         LogError(logAppendToForms, true, logMessage, jobLogType);
+                         UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                         continue;
+                     }
+                     string[] arr = jobInfo.InsertTableName.Split(',');
+                     if (arr.Count() > 0)
+                         insertTableName = arr[0].ToString();
+                     if (string.IsNullOrEmpty(insertTableName))
+                     {
+                         logMessage = string.Format("【{0}_{1}】  {1}失败 未定义新注册客户主表！！！", jobInfo.JobCode, jobInfo.JobName);
+                         LogError(logAppendToForms, true, logMessage, jobLogType);
+                         UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                         continue;
+                     }
+                     int dbr = BulkInsertDatabaseInt(logAppendToForms, jobInfo, dataTable, insertTableName);
+                     if (dbr > 0)
+                     {
+                         if (int.Equals(dbr, 2))
+                         {
+                             string strSql = CustomerDataTableToStrUpdate(dataTable, insertTableName, customerId);
+                             if (!BulkInsertDatabase(logAppendToForms, jobInfo, insertTableName, strSql))
+                             {
+                                 UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                                 continue;
+                             }
+                         }
+                         if (jArrayCertificatesList.Count() <= 0)
+                         {
+                             logMessage = string.Format("【{0}_{1}】  客户名称:{2} ;客户Id:{3}   证照图片资料失败！ 返回certificatesList数组为空2！！！", jobInfo.JobCode, jobInfo.JobName, companyName, customerId);
+                             LogError(logAppendToForms, true, logMessage, jobLogType);
+                             continue;
+                         }
+                         System.Data.DataTable itemsDt = Util.NewtonsoftCommon.ConvertJArrayToDataTable(logAppendToForms, jobInfo, jArrayCertificatesList);
+                         if (itemsDt == null || itemsDt.Rows.Count <= 0)
+                         {
+                             logMessage = string.Format("【{0}_{1}】  客户名称:{2} ;客户Id:{3}   证照图片资料转换DataTable失败！！！", jobInfo.JobCode, jobInfo.JobName, companyName, customerId);
+                             LogError(logAppendToForms, true, logMessage, jobLogType);
+                             UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                             continue;
+                         }
+                         //加字段
+                         if (!itemsDt.Columns.Contains("customerId"))
+                             itemsDt.Columns.Add("customerId", typeof(string));
+                         if (!itemsDt.Columns.Contains("updated"))
+                             itemsDt.Columns.Add("updated", typeof(string));
+                         foreach (System.Data.DataRow itemsDr in itemsDt.Rows)
+                         {
+                             itemsDr["customerId"] = customerId;
+                             itemsDr["updated"] = updated;
+                         }
+                         insertTableName = string.Empty;
+                         if (arr.Count() > 1)
+                             insertTableName = arr[1].ToString();
+                         if (string.IsNullOrEmpty(insertTableName))
+                         {
+                             logMessage = string.Format("【{0}_{1}】  {1} 新注册客户证照图片资料失败 未定义新注册客户证照图片资料表！！！", jobInfo.JobCode, jobInfo.JobName);
+                             LogError(logAppendToForms, true, logMessage, jobLogType);
+                             UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                             continue;
+                         }
+                         string itemsSql = DataTableToStrDeleteAndInsert(itemsDt, insertTableName);
+                         if (!BulkInsertDatabase(logAppendToForms, jobInfo, insertTableName, itemsSql))
+                         {
+                             UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                             continue;
+                         }
+                         //新注册客户插入成功后回写Erp  自动生成首营申请单  ？？
+
+                         //ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), customerId, string.Empty);
+
+                     }
+                     else
+                     {
+                         //插入数据库失败 
+                         UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
+                         continue;
+                     }
+                 }*/
+            }
+        }
+        #endregion
+
         #region ExecuteDataApiCustomerJob   同步客户数据接口
         /// <summary>
         /// ExecuteDataApiCustomerJob 同步客户数据接口
@@ -732,7 +1153,146 @@ namespace BLL
                 }
                 else
                     continue;
+                pageItems = null;
             }
+            customerDt = null;
+            customerItems = null;
+            jobInfo = null;
+        }
+        #endregion
+
+
+        #region ExecuteDataApiCustomerJob   同步客户数据接口Test
+        /// <summary>
+        /// ExecuteDataApiCustomerJob 同步客户数据接口
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void ExecuteDataApiCustomerTestJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode;  //Model
+            System.Data.DataTable customerDt = GetUpdataDataTable(logAppendToForms, jobInfo);
+            if (customerDt == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  同步客户数据失败！  客户数据为空！！！", jobInfo.JobCode, jobInfo.JobName.ToString());
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+            if (customerDt.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            List<Model.Customer> customerItems = new List<Model.Customer>();
+
+            foreach (System.Data.DataRow dr in customerDt.Rows)
+            {
+                Model.Customer customerItem = new Model.Customer();
+                customerItem.address = Util.DataTableHelper.DataRowContains(dr, "address");
+                customerItem.apparatusLicenseCode = Util.DataTableHelper.DataRowContains(dr, "apparatusLicenseCode");
+                customerItem.apparatusLicenseValidate = Util.DataTableHelper.DataRowContains(dr, "apparatusLicenseValidate");
+                customerItem.area = Util.DataTableHelper.DataRowContains(dr, "area");
+                customerItem.bankAccount = Util.DataTableHelper.DataRowContains(dr, "bankAccount");
+                customerItem.businessLicenseCode = Util.DataTableHelper.DataRowContains(dr, "businessLicenseCode");
+                customerItem.businessLicenseValidate = Util.DataTableHelper.DataRowContains(dr, "businessLicenseValidate");
+                customerItem.clientIdcard = Util.DataTableHelper.DataRowContains(dr, "clientIdcard");
+                customerItem.clientName = Util.DataTableHelper.DataRowContains(dr, "clientName");
+                customerItem.clientPhone = Util.DataTableHelper.DataRowContains(dr, "clientPhone");
+                customerItem.clientTimelimit = Util.DataTableHelper.DataRowContains(dr, "clientTimelimit");
+                customerItem.companyAddress = Util.DataTableHelper.DataRowContains(dr, "companyAddress");
+                customerItem.companyName = Util.DataTableHelper.DataRowContains(dr, "companyName");
+                customerItem.companyPrincipal = Util.DataTableHelper.DataRowContains(dr, "companyPrincipal");
+                customerItem.consignee = Util.DataTableHelper.DataRowContains(dr, "consignee");
+                customerItem.consigneePhone = Util.DataTableHelper.DataRowContains(dr, "consigneePhone");
+                customerItem.contactWay = Util.DataTableHelper.DataRowContains(dr, "contactWay");
+                customerItem.customerId = Util.DataTableHelper.DataRowContains(dr, "customerId");  //customerId Add 20200722
+                customerItem.customerTypeId = Util.DataTableHelper.DataRowContains(dr, "customerTypeId");
+                customerItem.depositBank = Util.DataTableHelper.DataRowContains(dr, "depositBank");
+                customerItem.depotAddress = Util.DataTableHelper.DataRowContains(dr, "depotAddress");
+                customerItem.drugInterceptScope = Util.DataTableHelper.DataRowContains(dr, "drugInterceptScope");
+                customerItem.dutyNumber = Util.DataTableHelper.DataRowContains(dr, "dutyNumber");
+                customerItem.erpCode = Util.DataTableHelper.DataRowContains(dr, "erpCode");
+                customerItem.erpId = Util.DataTableHelper.DataRowContains(dr, "erpId");
+                customerItem.erpSalesmanId = Util.DataTableHelper.DataRowContains(dr, "erpSalesmanId");
+                customerItem.foodLicenseCode = Util.DataTableHelper.DataRowContains(dr, "foodLicenseCode");
+                customerItem.foodLicenseValidate = Util.DataTableHelper.DataRowContains(dr, "foodLicenseValidate");
+                customerItem.gspCode = Util.DataTableHelper.DataRowContains(dr, "gspCode");
+                customerItem.gspValidate = Util.DataTableHelper.DataRowContains(dr, "gspValidate");
+                customerItem.instrumentInterceptScope = Util.DataTableHelper.DataRowContains(dr, "instrumentInterceptScope");
+                customerItem.isForProfit = Util.DataTableHelper.DataRowContainsInt(dr, "isForProfit");
+                customerItem.isRefrigeration = Util.DataTableHelper.DataRowContainsInt(dr, "isRefrigeration");
+                customerItem.legalPerson = Util.DataTableHelper.DataRowContains(dr, "legalPerson");
+                customerItem.level = Util.DataTableHelper.DataRowContains(dr, "level");
+                customerItem.licenceCode = Util.DataTableHelper.DataRowContains(dr, "licenceCode");
+                customerItem.licenceStartDate = Util.DataTableHelper.DataRowContains(dr, "licenceStartDate");
+                customerItem.licenceType = Util.DataTableHelper.DataRowContainsInt(dr, "licenceType");
+                customerItem.licenceValidate = Util.DataTableHelper.DataRowContains(dr, "licenceValidate");
+                customerItem.payType = Util.DataTableHelper.DataRowContains(dr, "payType");
+                customerItem.qualityPrincipal = Util.DataTableHelper.DataRowContains(dr, "qualityPrincipal");
+                customerItem.registeredCapital = Util.DataTableHelper.DataRowContains(dr, "registeredCapital");
+                customerItem.status = Util.DataTableHelper.DataRowContainsInt(dr, "status");
+                customerItem.scope = Util.DataTableHelper.DataRowContains(dr, "scope");
+                customerItem.specifyQuotation = Util.DataTableHelper.DataRowContains(dr, "specifyQuotation");
+                customerItem.twoApparatusLicenseCode = Util.DataTableHelper.DataRowContains(dr, "twoApparatusLicenseCode");
+                customerItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
+                customerItems.Add(customerItem);
+            }
+            if (customerItems != null && customerItems.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  同步客户数据失败！  客户实体为空！！！", jobInfo.JobCode, jobInfo.JobName.ToString());
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            int pagesSize = jobInfo.PageSize <= 0 ? customerItems.Count() : jobInfo.PageSize;
+            int pagesCount = customerItems.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
+            {
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = customerItems.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+                var arr = pageItems.Select(x => x.taskId).ToList();
+                string taskIds = string.Format("{0}", string.Join(",", arr));
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+
+
+                if (CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson))
+                {
+                    Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                    string resultJsonData = resultJObject["data"].ToString();  //resultJObject.Value<string>("data");
+                    if (!string.IsNullOrEmpty(resultJsonData) && !string.Equals(resultJsonData, "[]"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1}  {2} 部份失败！ 失败erpId:{3}", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, resultJsonData);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    }
+
+                    string taskIdsReplace = taskIds.Replace(",", string.Empty);
+                    if (string.IsNullOrEmpty(taskIdsReplace))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {2} 任务id:{3}  更新成功后回写失败; 客户taskId为空！！！", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, taskIds);
+                        LogError(logAppendToForms, true, logMessage, jobLogType);
+                        continue;
+                    }
+                    ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, resultJsonData);
+                }
+                else
+                    continue;
+                pageItems = null;
+            }
+            customerDt = null;
+            customerItems = null;
+            jobInfo = null;
 
         }
         #endregion
@@ -888,6 +1448,14 @@ namespace BLL
                             UpdataDataApiCustomerStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiCustomerStatus", "同步客户状态接口"), customerId, string.Empty, 4);
                             continue;
                         }
+
+                        //下载图片
+                        //OpenUrlDownloadFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string url, string filename)
+                        /*foreach (System.Data.DataRow dr in itemsDt.Rows)
+                        {
+                            string url = dr["customerId"].ToString();
+
+                        }*/
                         //新注册客户插入成功后回写Erp  自动生成首营申请单  ？？
 
                         //ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), customerId, string.Empty);
@@ -963,6 +1531,9 @@ namespace BLL
             else
                 return;
 
+            dataTable = null;
+            items = null;
+            jobInfo = null;
         }
         #endregion
 
@@ -1096,13 +1667,23 @@ namespace BLL
                             UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId, 3);//回到已支付状态
                             continue;
                         }
-                        
+
                         if (!BulkInsertDatabase(logAppendToForms, jobInfo, dtOrderListResult, insertListTableName))
                         {
                             //明细表插入数据失败
                             OrderToStrDelete(logAppendToForms, jobInfo, insertTableName, orderId);////删除主表？？？
                             UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId, 3);//回到已支付状态
                             continue;
+                        }
+                        else
+                        {
+                            //判断有无SSP打头  dtOrderListResult
+                            var saleOutDetailsDt = Util.DataTableHelper.GetNewDataTable(dtOrderListResult, "erpGoodsIdlocal like 'SSP%' ");
+                            if (dtOrderListResult != null && dtOrderListResult.Rows.Count > 0)
+                            {
+                                //处理秒杀等
+                                ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), "1", orderCode);
+                            }
                         }
                     }
                     else
@@ -1111,12 +1692,14 @@ namespace BLL
                         UpdateDataApiOrderStatus(logAppendToForms, GetJobEntity(jobInfo, "DataApiOrderStatus", "同步订单状态接口"), orderId, 3);//回到已支付状态
                         continue;
                     }
+                
                 }
 
             }
-            else
-                return;
+            //else
+              //  return;
 
+            jobInfo = null;
 
         }
         #endregion
@@ -1365,6 +1948,7 @@ namespace BLL
                     continue;
             }
 
+            jobInfo = null;
         }
         #endregion
         
@@ -1397,6 +1981,7 @@ namespace BLL
             foreach (System.Data.DataRow dr in dataTable.Rows)
             {
                 Model.OrderExpress item = new Model.OrderExpress();
+                item.expressCompany = Util.DataTableHelper.DataRowContains(dr, "expressCompany"); 
                 item.expressNo = Util.DataTableHelper.DataRowContains(dr, "expressNo"); //物流单号
                 item.orderId = Util.DataTableHelper.DataRowContains(dr, "orderId"); //订单id
                 items.Add(item);
@@ -1422,9 +2007,10 @@ namespace BLL
                 }
                 ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, string.Empty);
             }
-            else
-                return;
-
+            //else
+            //  return;
+            jobInfo = null;
+            dataTable = null;
         }
         #endregion
 
@@ -1486,8 +2072,10 @@ namespace BLL
                 }
                 ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskIds, string.Empty);
             }
-            else
-                return;
+            //else
+            //    return;
+            jobInfo = null;
+            dataTable = null;
 
         }
         #endregion
@@ -1585,6 +2173,7 @@ namespace BLL
                 salesmanItem.salesmanPhone = Util.DataTableHelper.DataRowContains(dr, "salesmanPhone");
                 salesmanItem.salesmanPost = Util.DataTableHelper.DataRowContains(dr, "salesmanPost");
                 salesmanItem.status = Util.DataTableHelper.DataRowContainsInt(dr, "status");  //status
+                salesmanItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");  //status
 
                 salesmanItems.Add(salesmanItem);
             }
@@ -1637,6 +2226,929 @@ namespace BLL
                 else
                     continue;
             }
+            jobInfo = null;
+            salesmanDt = null;
+        }
+        #endregion
+
+        #region ExecuteDataApiGoodsSpikeJob    商品秒杀 特价 买赠
+        /// <summary>
+        /// ExecuteDataApiGoodsSpikeJob  商品秒杀 特价 买赠
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void ExecuteDataApiGoodsSpikeJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+
+            //更新库存
+            UpdataGoodsSpikeCommodityRepertoryAsync(logAppendToForms, jobInfo);
+
+            System.Data.DataTable dataTable = GetUpdataDataTable(logAppendToForms, jobInfo);
+            if (dataTable == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            List<Model.OrderInvoice> items = new List<Model.OrderInvoice>();
+
+            foreach (System.Data.DataRow dr in dataTable.Rows)
+            {
+                Model.GoodsSpike item = new Model.GoodsSpike();
+                item.startDate = Util.DataTableHelper.DataRowContains(dr, "startDate"); //
+                item.startTime = Util.DataTableHelper.DataRowContains(dr, "startTime"); //
+                item.endDate = Util.DataTableHelper.DataRowContains(dr, "endDate"); //
+                item.endTime = Util.DataTableHelper.DataRowContains(dr, "endTime"); //
+                item.spikeGoodsId = Util.DataTableHelper.DataRowContains(dr, "spikeGoodsId"); //
+                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId"); //
+                item.activityNum = Util.DataTableHelper.DataRowContainsInt(dr, "activityNum"); //
+                item.spikePrice = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "spikePrice"), 2, MidpointRounding.AwayFromZero).ToString("F2");// Util.DataTableHelper.DataRowContains(dr, "spikePrice"); //
+                item.spikeType = Util.DataTableHelper.DataRowContainsInt(dr, "spikeType"); //
+                item.subtitle = Util.DataTableHelper.DataRowContains(dr, "spikePrice"); //
+                item.spikelimitMax = Util.DataTableHelper.DataRowContainsInt(dr, "spikelimitMax"); //
+                string originalPrice = Util.DataTableHelper.DataRowContains(dr, "originalPrice"); //
+                decimal originalPriceDec = Util.ConvertHelper.ConvertStringToDecimal(originalPrice);
+
+                if(originalPriceDec<=0)
+                {
+                    originalPrice = "99999";
+                }
+                item.originalPrice = originalPrice;// Util.DataTableHelper.DataRowContains(dr, "originalPrice"); //
+                string isAdd = Util.DataTableHelper.DataRowContains(dr, "isAdd"); //
+                string isStart = Util.DataTableHelper.DataRowContains(dr, "isStart"); //
+                string isEnd = Util.DataTableHelper.DataRowContains(dr, "isEnd"); //
+                int updateType = Util.DataTableHelper.DataRowContainsInt(dr, "updateType"); //
+                string taskId = Util.DataTableHelper.DataRowContains(dr, "taskId"); //
+                if(string.Equals(isAdd,"N")) //新增商品资料
+                {
+                    if (int.Equals(updateType, 1))
+                    {
+                        //更新商品资料
+                        UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item, item.spikeGoodsId, taskId, "isAdd");
+                        //更新图片
+                        UpdateGoodsSpikeCommodityImageJob(logAppendToForms, jobInfo, item.spikeGoodsId, taskId, "isAdd");
+                    }
+                    else if (int.Equals(updateType, 2)) //更新库存
+                    {
+                        //活动未开始更新库存为0 
+                        UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, item.activityNum, taskId, "isAdd");
+                    }
+
+                    else if (int.Equals(updateType, 3)) //更新价格
+                    {
+                        //UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, "99999.99",99999, taskId, "isAdd");
+                        UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, item.originalPrice, 99999, taskId, "isAdd");
+                        if (ComparisonDate(logAppendToForms, jobInfo, string.Format("{0} {1}", item.startDate, item.startTime)) == 0)
+                        {
+                            //更新价格
+                            UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, item.spikePrice, item.spikelimitMax, taskId, "isStart");
+                            UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item, item.spikeGoodsId, taskId, "isStart");
+                            UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, item.activityNum, taskId, "isStart");
+
+                        }
+                       
+                    }
+                }
+                else if (string.Equals(isAdd, "Y"))
+                {
+                    if (string.Equals(isStart,"N"))
+                    {
+                        //任务开始
+                        if (ComparisonDate(logAppendToForms, jobInfo, string.Format("{0} {1}", item.startDate, item.startTime)) == 0) 
+                        {
+                            if (int.Equals(updateType, 1))
+                            {
+                                //更新商品资料
+                                UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item,item.spikeGoodsId, taskId, "isStart");
+                                //更新图片
+                                UpdateGoodsSpikeCommodityImageJob(logAppendToForms, jobInfo, item.spikeGoodsId, taskId, "isStart");
+                            }
+                            else if (int.Equals(updateType, 2)) //更新库存
+                            {
+                                //活动开始更新库存 
+                                UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, item.activityNum, taskId, "isStart");
+                            }
+                            else if (int.Equals(updateType, 3)) 
+                            {
+                                //更新价格
+                                UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, item.spikePrice, item.spikelimitMax, taskId, "isStart");
+                            }
+                        }
+                        //任务未开始
+                        else if (ComparisonDate(logAppendToForms, jobInfo, string.Format("{0} {1}", item.startDate, item.startTime, taskId)) == 1)
+                        {
+                            if (int.Equals(updateType, 1))
+                            {
+                                //更新商品资料
+                                UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item, item.spikeGoodsId, taskId, "isAdd");
+                                //更新图片
+                                UpdateGoodsSpikeCommodityImageJob(logAppendToForms, jobInfo, item.spikeGoodsId, taskId, "isAdd");
+                            }
+                            else if (int.Equals(updateType, 2)) //更新库存
+                            {
+                                //活动未开始更新库存为0 
+                                UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, item.activityNum, taskId, "isAdd");
+                            }
+                            else if (int.Equals(updateType, 3)) //更新库存
+                            {
+                                //更新价格  item.originalPrice
+                                UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, item.originalPrice, 99999, taskId, "isAdd");
+                                //UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, "99999.99", 99999, taskId, "isAdd");
+                            }
+                        }
+                    }
+                    else if (string.Equals(isStart, "Y"))
+                    {
+                        //任务开始，但未结束
+                        if (string.Equals(isEnd, "N"))
+                        {
+                            //结未日期已到
+                            if (ComparisonDate(logAppendToForms, jobInfo, string.Format("{0} {1}", item.endDate, item.endTime)) == 0)
+                            {
+                                UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, 0, taskId, "isEnd"); //更新库存为零
+                                if (int.Equals(updateType, 1))
+                                {
+                                    //更新商品资料
+                                    UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item, item.spikeGoodsId, taskId, "isEnd");
+                                    //更新图片
+                                    //UpdateGoodsSpikeCommodityImageJob(logAppendToForms, jobInfo, item.spikeGoodsId, taskId, "isEnd");
+                                }
+                                else if (int.Equals(updateType, 2)) //更新库存
+                                {
+                                    //更新库存 
+                                    UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, 0, taskId, "isEnd");
+                                }
+                                else if (int.Equals(updateType, 3)) 
+                                {
+                                    //更新价格
+                                    UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, "99999.99", 99999, taskId, "isEnd");
+                                }
+                            }
+                            //活动中
+                            else
+                            {
+                                if (int.Equals(updateType, 1))
+                                {
+                                    //更新商品资料
+                                    UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item, item.spikeGoodsId, taskId, "isStart");
+                                    //更新图片
+                                    UpdateGoodsSpikeCommodityImageJob(logAppendToForms, jobInfo, item.spikeGoodsId, taskId, "isStart");
+                                }
+                                else if (int.Equals(updateType, 2)) //更新库存
+                                {
+                                    //更新库存 
+                                    UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, item.activityNum, taskId, "isStart");
+                                }
+                                else if (int.Equals(updateType, 3)) 
+                                {
+                                    //更新价格
+                                    UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId, item.spikePrice, item.spikelimitMax, taskId, "isStart");
+                                }
+                            }
+                        }//任务结束
+                        else if (string.Equals(isEnd, "Y"))
+                        {
+                            UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId,0, taskId, "isEnd"); //更新库存为零
+                            if (int.Equals(updateType, 1))
+                            {
+                                //更新商品资料
+                                UpdataGoodsSpikeCommodity(logAppendToForms, jobInfo, item,item.spikeGoodsId, taskId, "isEnd");
+                                //更新图片
+                                //UpdateGoodsSpikeCommodityImageJob(logAppendToForms, jobInfo, item.spikeGoodsId, taskId, "isEnd");
+                            }
+                            else if (int.Equals(updateType, 2)) //更新库存
+                            {
+                                //更新库存 
+                                UpdataGoodsSpikeCommodityRepertory(logAppendToForms, jobInfo, item.spikeGoodsId, 0, taskId, "isEnd");
+                            }
+                            else if (int.Equals(updateType, 3)) 
+                            {
+                                //更新价格
+                                UpdataGoodsSpikeCommodityPriceJob(logAppendToForms, jobInfo, item.spikeGoodsId,"99999.99", 99999, taskId, "isEnd");
+                            }
+                        }
+                    }
+
+                }
+
+            }
+            jobInfo = null;
+            dataTable = null;
+        }
+        #endregion
+
+        #region UpdataGoodsSpikeCommodityRepertory    同步商品库存接口(异步)
+        /// <summary>
+        /// UpdataGoodsSpikeCommodityRepertory  同步商品库存接口
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void UpdataGoodsSpikeCommodityRepertory(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityRepertoryAsync", " 同步商品库存接口(异步)(秒杀特价)");
+            System.Data.DataTable dataTable = GetUpdataDataTable(logAppendToForms, jobInfo, "GoodsSpikeCommodityRepertory");
+            if (dataTable == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+
+
+            List<Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
+
+
+            foreach (System.Data.DataRow dr in dataTable.Rows)
+            {
+                Model.CommodityRepertory item = new Model.CommodityRepertory();
+
+                item.dateExpiration = Util.DataTableHelper.DataRowContains(dr, "dateExpiration");  //dateExpiration
+                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
+                item.productionDate = Util.DataTableHelper.DataRowContains(dr, "productionDate");
+                item.repertory = Util.DataTableHelper.DataRowContainsInt(dr, "repertory");
+                item.shelveStatus = Util.DataTableHelper.DataRowContainsInt(dr, "shelveStatus");
+                items.Add(item);
+            }
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+            int pagesSize = jobInfo.PageSize <= 0 ? items.Count() : jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
+            {
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+                //CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
+                {
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，第二次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                        resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                        if (!resultStatus)
+                        {
+                            msg = resultJObject["msg"].ToString();
+                            if (string.Equals(msg, "操作超时"))
+                            {
+                                logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时10秒，第三次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                                Thread.Sleep(10000);//休眠时间
+                                resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+
+                            }
+                        }
+
+                    }
+                }
+                pageItems = null;
+            }
+            //dataTable = null;
+            //items = null;
+            //jobInfo = null;
+        }
+        #endregion
+
+        #region UpdataGoodsSpikeCommodityRepertoryAsync    同步商品库存接口(异步)
+        /// <summary>
+        /// UpdataGoodsSpikeCommodityRepertory  同步商品库存接口
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void UpdataGoodsSpikeCommodityRepertoryAsync(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityRepertoryAsync", " 同步商品库存接口(异步)(秒杀特价)");
+            System.Data.DataTable dataTable = GetUpdataDataTable(logAppendToForms, jobInfo, "GoodsSpikeCommodityRepertory");
+            if (dataTable == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+
+
+            List<Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
+
+
+            foreach (System.Data.DataRow dr in dataTable.Rows)
+            {
+                Model.CommodityRepertory item = new Model.CommodityRepertory();
+
+                item.dateExpiration = Util.DataTableHelper.DataRowContains(dr, "dateExpiration");  //dateExpiration
+                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
+                item.productionDate = Util.DataTableHelper.DataRowContains(dr, "productionDate");
+                item.repertory = Util.DataTableHelper.DataRowContainsInt(dr, "repertory");
+                item.shelveStatus = Util.DataTableHelper.DataRowContainsInt(dr, "shelveStatus");
+                items.Add(item);
+            }
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+            int pagesSize = jobInfo.PageSize <= 0 ? items.Count() : jobInfo.PageSize;
+            int pagesCount = items.Count();
+            int splitCopies = (int)Math.Ceiling((double)pagesCount / pagesSize);
+            int pageNum = 0; //页码
+            for (int i = 0; i < splitCopies; i++)
+            {
+                pageNum = i;
+                //pageSize ：表示一页多少条。
+                //pageNum：表示页数，但是正确的页数是pageNum + 1。因为pageNum = 0，是第一页。pageNum = 1的时候，是第二页。
+                //Skip ：表示从第pageNum* pageSize +1条数据开始，也就是说再这之前有pageNum* pageSize条数据。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                //Take：表示显示多少条数据，也就是pageSize条。
+                var pageItems = items.Skip(pageNum * pagesSize).Take(pagesSize).ToList();
+
+                string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(pageItems);
+                string resultJson = string.Empty;
+                jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+                //CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                if (!resultStatus)
+                {
+                    string msg = resultJObject["msg"].ToString();
+                    if (string.Equals(msg, "操作超时"))
+                    {
+                        logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，第二次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                        LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                        Thread.Sleep(5000);//休眠时间
+                        resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                        resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+                        if (!resultStatus)
+                        {
+                            msg = resultJObject["msg"].ToString();
+                            if (string.Equals(msg, "操作超时"))
+                            {
+                                logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时10秒，第三次调用", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                                Thread.Sleep(10000);//休眠时间
+                                resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+
+                            }
+                        }
+
+                    }
+                }
+                pageItems = null;
+            }
+           // dataTable = null;
+            //items = null;
+            //jobInfo = null;
+
+        }
+        #endregion 
+
+        #region UpdataGoodsSpikeCommodityRepertory    更新指定商品库存接口
+        /// <summary>
+        ///  UpdataGoodsSpikeCommodityRepertory    更新指定商品库存接口
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <param name="erpGoodsId"></param>
+        /// <param name="repertory"></param>
+        private bool UpdataGoodsSpikeCommodityRepertory(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string erpGoodsId, int repertory,string taskId,string startType)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityRepertory", " 同步商品库存接口(秒杀特价)");
+
+            List<Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
+
+            Model.CommodityRepertory item = new Model.CommodityRepertory();
+
+            item.dateExpiration = string.Empty;  //dateExpiration
+            item.erpGoodsId = erpGoodsId;
+            item.productionDate = string.Empty;
+            item.repertory = repertory;
+            if (string.Equals(startType, "isEnd"))
+                item.shelveStatus = 2;
+            else
+                item.shelveStatus = 1;
+            items.Add(item);
+
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return false;
+            }
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
+            string resultJson = string.Empty;
+
+            bool resultStatus = false;
+            resultStatus=    CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+            if (!resultStatus)
+            {
+                string msg = resultJObject["msg"].ToString();
+                if (string.Equals(msg, "操作超时"))
+                {
+                    logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Thread.Sleep(5000);//休眠时间
+                    resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                }
+            }
+            if (resultStatus)
+                ErpWriteback(logAppendToForms, jobInfo, "GoodsSpikeUpdataCommodityRepertory", erpGoodsId, taskId, startType);
+            return resultStatus;
+
+        }
+        #endregion
+
+        #region UpdataGoodsSpikeCommodityRepertoryAsync    更新指定商品库存接口(异步)(秒杀特价)
+        /// <summary>
+        ///  UpdataGoodsSpikeCommodityRepertoryAsync    更新指定商品库存接口(异步)(秒杀特价)
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <param name="erpGoodsId"></param>
+        /// <param name="repertory"></param>
+        private bool UpdataGoodsSpikeCommodityRepertoryAsync(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string erpGoodsId, int repertory, string taskId, string startType)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityRepertoryAsync", " 同步商品库存接口(异步)(秒杀特价)");
+
+            List<Model.CommodityRepertory> items = new List<Model.CommodityRepertory>();
+
+            Model.CommodityRepertory item = new Model.CommodityRepertory();
+
+            item.dateExpiration = string.Empty;  //dateExpiration
+            item.erpGoodsId = erpGoodsId;
+            item.productionDate = string.Empty;
+            item.repertory = repertory;
+            if (string.Equals(startType, "isEnd"))
+                item.shelveStatus = 2;
+            else
+                item.shelveStatus = 1;
+            items.Add(item);
+
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return false;
+            }
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
+            string resultJson = string.Empty;
+
+            bool resultStatus = false;
+            resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+            if (!resultStatus)
+            {
+                string msg = resultJObject["msg"].ToString();
+                if (string.Equals(msg, "操作超时"))
+                {
+                    logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Thread.Sleep(5000);//休眠时间
+                    resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                }
+            }
+            if (resultStatus)
+                ErpWriteback(logAppendToForms, jobInfo, "GoodsSpikeUpdataCommodityRepertory", erpGoodsId, taskId, startType);
+            return resultStatus;
+
+        }
+        #endregion
+
+        #region UpdataGoodsSpikeCommodity    同步商品基础数据资料接口(秒杀特价)
+        /// <summary>
+        /// UpdataGoodsSpikeCommodity  同步商品基础数据资料接口(秒杀特价)
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void UpdataGoodsSpikeCommodity(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, Model.GoodsSpike goodsSpike, string erpGoodsId, string taskId, string startType)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodity", " 同步商品数据(秒杀特价)");
+            jobInfo.ModuleID = "GoodsSpikeCommodity";
+            System.Data.DataTable commodityDt = GetUpdataDataTable(logAppendToForms, jobInfo, erpGoodsId,string.Empty);
+            if (commodityDt == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  同步商品数据失败！  商品数据为空！！！", jobInfo.JobCode, jobInfo.JobName.ToString());
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (commodityDt.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+            List<Model.Commodity> commodityItems = new List<Model.Commodity>();
+            foreach (System.Data.DataRow dr in commodityDt.Rows)
+            {
+                Model.Commodity commodityItem = new Model.Commodity();
+
+                commodityItem.appearance = Util.DataTableHelper.DataRowContains(dr, "appearance"); //Add 20200722
+                commodityItem.approvalNo = Util.DataTableHelper.DataRowContains(dr, "approvalNo");
+                commodityItem.bases = Util.DataTableHelper.DataRowContains(dr, "bases");  //Add 20200722
+                commodityItem.brandName = Util.DataTableHelper.DataRowContains(dr, "brandName");
+                commodityItem.businessScopeCode = Util.DataTableHelper.DataRowContains(dr, "businessScopeCode");
+                //commodityItem.businessScopeName = Util.DataTableHelper.DataRowContains(dr, "businessScopeName");
+                commodityItem.catagoryCode = Util.DataTableHelper.DataRowContains(dr, "catagoryCode");
+                commodityItem.drugInteractions = Util.DataTableHelper.DataRowContains(dr, "drugInteractions"); //Add 20200722
+
+                commodityItem.erpGoodsCode = Util.DataTableHelper.DataRowContains(dr, "erpGoodsCode");
+                commodityItem.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "erpGoodsId");
+                //commodityItem.firstLevel = Util.DataTableHelper.DataRowContains(dr, "firstLevel");
+                commodityItem.formula = Util.DataTableHelper.DataRowContains(dr, "formula");
+                commodityItem.logogram = Util.DataTableHelper.DataRowContains(dr, "logogram");
+
+                commodityItem.isMedicalInstruments = Util.DataTableHelper.DataRowContains(dr, "isMedicalInstruments");  //isMedicalInstruments Add 20200722
+                //commodityItem.goodsAttr = Util.DataTableHelper.DataRowContains(dr, "goodsAttr");
+                commodityItem.goodsName = Util.DataTableHelper.DataRowContains(dr, "goodsName");
+                commodityItem.goodsSpec = Util.DataTableHelper.DataRowContains(dr, "goodsSpec");
+                commodityItem.goodsTradeName = Util.DataTableHelper.DataRowContains(dr, "goodsTradeName");
+                commodityItem.goodsType = Util.DataTableHelper.DataRowContains(dr, "goodsType");
+                commodityItem.majorFunctions = Util.DataTableHelper.DataRowContains(dr, "majorFunctions"); //Add 20200722
+
+                commodityItem.manufacturer = Util.DataTableHelper.DataRowContains(dr, "manufacturer");
+                commodityItem.manufacturerLogogram = Util.DataTableHelper.DataRowContains(dr, "manufacturerLogogram");
+                commodityItem.marketingAuthorizationHolder = Util.DataTableHelper.DataRowContains(dr, "marketingAuthorizationHolder");
+                commodityItem.middlePackAmount = Util.DataTableHelper.DataRowContainsInt(dr, "middlePackAmount");
+                commodityItem.modCount = Util.DataTableHelper.DataRowContainsInt(dr, "modCount");
+                commodityItem.originPlace = Util.DataTableHelper.DataRowContains(dr, "originPlace");  //originPlace
+                commodityItem.packAmount = Util.DataTableHelper.DataRowContainsInt(dr, "packAmount");
+                commodityItem.packUnits = Util.DataTableHelper.DataRowContains(dr, "packUnits");
+                commodityItem.pharmacologicalAction = Util.DataTableHelper.DataRowContains(dr, "pharmacologicalAction");  //pharmacologicalAction
+                commodityItem.prescriptionType = Util.DataTableHelper.DataRowContains(dr, "prescriptionType");
+                commodityItem.qualityStandard = Util.DataTableHelper.DataRowContains(dr, "qualityStandard");
+                commodityItem.sellState = Util.DataTableHelper.DataRowContainsInt(dr, "sellState");
+                int recommend = Util.DataTableHelper.DataRowContainsInt(dr, "recommend");
+                
+                commodityItem.recommend =recommend<2 ? 999 : recommend;
+                if (string.Equals(startType, "isEnd"))  //isEnd
+                {
+                    commodityItem.recommend = 0;
+                    commodityItem.sellState = 2;
+                }
+
+                commodityItem.searchKey = Util.DataTableHelper.DataRowContains(dr, "searchKey");
+                //commodityItem.secondLevel = Util.DataTableHelper.DataRowContains(dr, "secondLevel");
+                commodityItem.sellCtrlAdmin = Util.DataTableHelper.DataRowContains(dr, "sellCtrlAdmin");
+                commodityItem.sellCtrlBusinessType = Util.DataTableHelper.DataRowContains(dr, "sellCtrlBusinessType");
+                commodityItem.sellingPoint = Util.DataTableHelper.DataRowContains(dr, "sellingPoint");
+                
+                commodityItem.storageType = Util.DataTableHelper.DataRowContains(dr, "storageType");
+                commodityItem.store = Util.DataTableHelper.DataRowContains(dr, "store");  //store
+                commodityItem.suggestedRetailPrice = Math.Round(Util.DataTableHelper.DataRowContainsDecimal(dr, "suggestedRetailPrice"), 2, MidpointRounding.AwayFromZero).ToString("F2");// Util.DataTableHelper.DataRowContains(dr, "suggestedRetailPrice");
+                commodityItem.taboo = Util.DataTableHelper.DataRowContains(dr, "taboo");
+                commodityItem.untowardEffect = Util.DataTableHelper.DataRowContains(dr, "untowardEffect");
+                commodityItem.usageDosage = Util.DataTableHelper.DataRowContains(dr, "usageDosage");
+                commodityItem.warnings = Util.DataTableHelper.DataRowContains(dr, "warnings");
+                string sellingPoint = Util.DataTableHelper.DataRowContains(dr, "sellingPoint");
+                int spikeType = goodsSpike.spikeType;
+                string spikeTypeStr = string.Empty;
+                if (int.Equals(spikeType, 1))
+                    spikeTypeStr = "限时秒杀";
+                else if (int.Equals(spikeType, 2))
+                    spikeTypeStr = "超值特价";
+                else if (int.Equals(spikeType, 3))
+                    spikeTypeStr = "买赠";
+
+                commodityItem.activityType = spikeType;
+                commodityItem.activityStartTime = Util.DataTableHelper.DataRowContains(dr, "activityStartTime");
+                commodityItem.activityEndTime = Util.DataTableHelper.DataRowContains(dr, "activityEndTime");
+
+                if (string.Equals(startType, "isEnd"))
+                {
+                    string strInto = string.Format("【{0}】 活动已结束！！！【{1} {2} -{3} {4}】 ", spikeTypeStr, goodsSpike.startDate, goodsSpike.startTime, goodsSpike.endDate, goodsSpike.endTime);
+                    if (int.Equals(spikeType, 3))
+                        strInto = "【买赠】";
+                        //commodityItem.sellingPoint = string.Format("活动结束！！！{0}", sellingPoint);
+                    if (goodsSpike.spikelimitMax > 0)
+                        //commodityItem.sellingPoint = string.Format("【{0}】 活动结束！！！【{1} {2} -{3} {4}】 限购{5}{6} {7}", spikeTypeStr,goodsSpike.startDate, goodsSpike.startTime, goodsSpike.endDate, goodsSpike.endTime, goodsSpike.spikelimitMax.ToString(), commodityItem.packUnits, sellingPoint);
+                        commodityItem.sellingPoint = string.Format("{0}  限购{1}{2} {3}", strInto, goodsSpike.spikelimitMax.ToString(), commodityItem.packUnits, sellingPoint);
+                    else
+                        //commodityItem.sellingPoint = string.Format("【{0}】 活动结束！！！【{1} {2} -{3} {4}】 {5}", spikeTypeStr,goodsSpike.startDate, goodsSpike.startTime, goodsSpike.endDate, goodsSpike.endTime, sellingPoint);
+                        commodityItem.sellingPoint = string.Format("{0}  {1}", strInto, sellingPoint);
+                }
+                else if (string.Equals(startType, "isAdd"))
+                {
+                    string strInto = string.Format("【{0}】 未开始！！！", spikeTypeStr);
+                    
+                    if (goodsSpike.spikelimitMax > 0)
+                        //commodityItem.sellingPoint = string.Format("【{0}】【{1} {2}】开始！！！限购{3}{4} {5}", spikeTypeStr, goodsSpike.startDate, goodsSpike.startTime, goodsSpike.spikelimitMax.ToString(), commodityItem.packUnits, sellingPoint);
+                        commodityItem.sellingPoint = string.Format("{0}  限购{1}  {2}  {3}", strInto,  goodsSpike.spikelimitMax.ToString(), commodityItem.packUnits, sellingPoint);
+                    else
+                        //commodityItem.sellingPoint = string.Format("【{0}】【{1} {2}】开始！！！ {3}", spikeTypeStr, goodsSpike.startDate, goodsSpike.startTime,  sellingPoint);
+                        commodityItem.sellingPoint = string.Format("{0} {1}", strInto,  sellingPoint);
+                }
+                else if (string.Equals(startType, "isStart"))
+                {
+                    string strInto = string.Format("【{0}】【{1} {2} -{3} {4}】 ", spikeTypeStr, goodsSpike.startDate, goodsSpike.startTime, goodsSpike.endDate, goodsSpike.endTime);
+                    if (int.Equals(spikeType, 3))
+                        strInto = "【买赠】";
+                    if (goodsSpike.spikelimitMax > 0)
+                        //commodityItem.sellingPoint = string.Format("【{0}】【{1} {2} -{3} {4}】 限购{5}{6} {7}", spikeTypeStr, goodsSpike.startDate, goodsSpike.startTime, goodsSpike.endDate, goodsSpike.endTime, goodsSpike.spikelimitMax.ToString(), commodityItem.packUnits, sellingPoint);
+                        commodityItem.sellingPoint = string.Format("{0}   限购{1}   {2}   {3}", strInto, goodsSpike.spikelimitMax.ToString(), commodityItem.packUnits, sellingPoint);
+                    else
+                        //commodityItem.sellingPoint = string.Format("【{0}】【{1} {2} -{3} {4}】 {5}", spikeTypeStr, goodsSpike.startDate, goodsSpike.startTime, goodsSpike.endDate, goodsSpike.endTime, sellingPoint);
+                        commodityItem.sellingPoint = string.Format("{0} {1}", strInto, sellingPoint);
+
+                }
+                else
+                    commodityItem.sellingPoint = sellingPoint;// commodityItem.sellingPoint = string.Format("活动结束！！！{0}", sellingPoint);  //sellingPoint;
+                //commodityItem.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
+
+                commodityItems.Add(commodityItem);
+            }
+            if (commodityItems != null && commodityItems.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  同步商品数据失败！  商品实体为空！！！", jobInfo.JobCode, jobInfo.JobName.ToString());
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(commodityItems);
+            string resultJson = string.Empty;
+          
+            bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+            if (!resultStatus)
+            {
+                string msg = resultJObject["msg"].ToString();
+                if (string.Equals(msg, "操作超时"))
+                {
+                    logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Thread.Sleep(5000);//休眠时间
+                    resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                }
+            }
+            if (resultStatus)
+                ErpWriteback(logAppendToForms, jobInfo, "UpdataGoodsSpikeCommodity", erpGoodsId, taskId, startType);
+            //commodityItems = null;
+           // commodityDt = null;
+            //jobInfo = null;
+        }
+
+        #endregion
+
+        #region UpdateGoodsSpikeCommodityImageJob    同步商品图片接口(秒杀特价)
+        /// <summary>
+        /// UpdateGoodsSpikeCommodityImageJob  同步商品图片接口(秒杀特价)
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void UpdateGoodsSpikeCommodityImageJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string erpGoodsId, string taskId, string startType)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityImage", " 同步商品图片接口(秒杀特价)");
+            jobInfo.ModuleID = "GoodsSpikeCommodityImage";
+            System.Data.DataTable dataTable = GetUpdataDataTable(logAppendToForms, jobInfo, erpGoodsId,string.Empty);
+            if (dataTable == null)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 数据为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            if (dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}无数据，不需要同步！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            List<Model.CommodityImage> items = new List<Model.CommodityImage>();
+
+            dataTable = ImagesFileToBytes(logAppendToForms, jobInfo, dataTable);
+            if (dataTable == null || dataTable.Rows.Count <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】  {1}失败！ 加载图片后数据为空1！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            //isImagesCompleted
+            System.Data.DataTable imageDetailsDt = Util.DataTableHelper.GetNewDataTable(dataTable, "isImagesCompleted='Y' ");
+            foreach (System.Data.DataRow dr in imageDetailsDt.Rows)
+            {
+                Model.CommodityImage item = new Model.CommodityImage();
+                item.base64Str = Util.DataTableHelper.DataRowContains(dr, "base64Str");
+                item.erpGoodsId = Util.DataTableHelper.DataRowContains(dr, "spikeGoodsId");
+                item.fileName = Util.DataTableHelper.DataRowContains(dr, "fileName");
+                item.fileType = Util.DataTableHelper.DataRowContains(dr, "fileType").Replace(".", string.Empty);
+                item.imageType = Util.DataTableHelper.DataRowContainsInt(dr, "imageType");  //图片类型1药品图片;2正面图;3背面图;4:45度角图;5条形码图;6拆包图
+                item.taskId = Util.DataTableHelper.DataRowContainsInt(dr, "taskId");
+                items.Add(item);
+            }
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
+            string resultJson = string.Empty;
+            //jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+
+            bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+            if (!resultStatus)
+            {
+                string msg = resultJObject["msg"].ToString();
+                if (string.Equals(msg, "操作超时"))
+                {
+                    logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Thread.Sleep(5000);//休眠时间
+                    resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                }
+            }
+            //if (resultStatus)
+            //  ErpWriteback(logAppendToForms, jobInfo, jobInfo.JobCode.ToString(), taskId, "UpdateCommodityImageJob");
+            //dataTable = null;
+           // imageDetailsDt = null;
+        }
+        #endregion
+
+        #region UpdataGoodsSpikeCommodityPriceJob    同步商品价格接口(秒杀特价)
+        /// <summary>
+        /// UpdataGoodsSpikeCommodityPriceJob  同步商品价格接口(秒杀特价)
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void UpdataGoodsSpikeCommodityPriceJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string erpGoodsId, string lsj, int limitMax, string taskId, string startType)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityPrice", " 同步商品价格接口(秒杀特价)");
+
+            List<Model.CommodityPrice> items = new List<Model.CommodityPrice>();
+
+            Model.CommodityPrice item = new Model.CommodityPrice();
+            item.erpGoodsId = erpGoodsId;
+            item.limitMax = limitMax;
+            item.limitMin = 0;
+            item.lsj = lsj;
+            item.lsjAbsolute = lsj;
+            item.lsjMax = "0";
+            item.lsjMin = "0";
+
+            items.Add(item);
+
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
+            string resultJson = string.Empty;
+            //jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+
+            bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+            if (!resultStatus)
+            {
+                string msg = resultJObject["msg"].ToString();
+                if (string.Equals(msg, "操作超时"))
+                {
+                    logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Thread.Sleep(5000);//休眠时间
+                    resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                }
+            }
+            if (resultStatus)
+              ErpWriteback(logAppendToForms, jobInfo, "GoodsSpikeUpdataCommodityPriceJob", erpGoodsId, taskId, startType);
+        }
+        #endregion
+
+        #region UpdataGoodsSpikeCommodityPriceJobAsync    同步商品价格接口(异步)(秒杀特价)
+        /// <summary>
+        /// UpdataGoodsSpikeCommodityPriceJobAsync   同步商品价格接口(异步)(秒杀特价)
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void UpdataGoodsSpikeCommodityPriceJobAsync(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string erpGoodsId, string lsj, int limitMax, string taskId, string startType)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            jobInfo = GetJobEntity(jobInfo, "DataApiCommodityPriceAsync", " 同步商品价格接口(异步)(秒杀特价)");
+
+            List<Model.CommodityPrice> items = new List<Model.CommodityPrice>();
+
+            Model.CommodityPrice item = new Model.CommodityPrice();
+            item.erpGoodsId = erpGoodsId;
+            item.limitMax = limitMax;
+            item.limitMin = 0;
+            item.lsj = lsj;
+            item.lsjAbsolute = lsj;
+            item.lsjMax = "0";
+            item.lsjMin = "0";
+
+            items.Add(item);
+
+            if (items != null && items.Count() <= 0)
+            {
+                logMessage = string.Format("【{0}_{1}】 {1}失败！  实体为空！！！", jobInfo.JobCode, jobInfo.JobName);
+                LogError(logAppendToForms, true, logMessage, jobLogType);
+                return;
+            }
+            string requestJson = Util.NewtonsoftCommon.SerializeObjToJson(items);
+            string resultJson = string.Empty;
+            //jobInfo.JobInfo = string.Format("共{0}条;分{1}次上传;当前第{2}次", pagesCount.ToString(), splitCopies.ToString(), (pageNum + 1).ToString());
+
+            bool resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(resultJson);
+            if (!resultStatus)
+            {
+                string msg = resultJObject["msg"].ToString();
+                if (string.Equals(msg, "操作超时"))
+                {
+                    logMessage = string.Format("【{0}_{1}】  {1} {2} 调用接口超时，延时5秒，再次调用一次", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo);
+                    LogWarning(logAppendToForms, true, logMessage, jobLogType);
+                    Thread.Sleep(5000);//休眠时间
+                    resultStatus = CallB2bApi(logAppendToForms, jobInfo, requestJson, out resultJson);
+                }
+            }
+            if (resultStatus)
+                ErpWriteback(logAppendToForms, jobInfo, "GoodsSpikeUpdataCommodityPriceJob", erpGoodsId, taskId, startType);
+        }
+        #endregion
+
+        #region ExecuteGoodsSpikeTaskJob    商品秒杀
+        /// <summary>
+        /// ExecuteDataApiGoodsSpikeJob  商品秒杀
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        private void ExecuteGoodsSpikeTaskJob(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo)
+        {
+            string logMessage = string.Empty;
+            string goodsIds = string.Empty;
+            string jobLogType = jobInfo.JobCode.ToString();
+            ErpExecuteProcedure(logAppendToForms, jobInfo, "Green_YyhB2b_GoodsSpike");
 
         }
         #endregion
@@ -1667,6 +3179,34 @@ namespace BLL
             return ibll.GetDataTableAll(logAppendToForms, searchParam);
         }
 
+
+        /// <summary>
+        /// GetUpdataDataTable
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <returns></returns>
+        private System.Data.DataTable GetUpdataDataTable(Log4netUtil.LogAppendToForms logAppendToForms,
+                                                    Model.JobEntity jobInfo, string moduleID)
+        {
+            Model.SearchParam searchParam = new Model.SearchParam();
+            searchParam.TargetDatabase = jobInfo.TargetDatabase;// "Erp";
+            searchParam.ProcedureName = jobInfo.ProcedureName;// "DtyPrepurchInterface_SqlView";
+            searchParam.ModuleID = moduleID;// jobInfo.ModuleID;
+            searchParam.IsMaintain = jobInfo.FilterBillType;
+            searchParam.StartDate = DateTime.Now.ToString("yyyy-MM-dd");
+            searchParam.EndDate = DateTime.Now.AddDays(-jobInfo.ConfigInfo.AutoAdvanceDays).ToString("yyyy-MM-dd");
+            searchParam.Logogram = string.Empty;
+            searchParam.BillCode = string.Empty;
+            searchParam.IsDebug = jobInfo.IsDebug;
+            searchParam.jobInfo = jobInfo;
+            BLLFactory.FactoryBLL bllfact = new BLLFactory.FactoryBLL();
+            Facade.ICommonBLL ibll = bllfact.CreateCommonBLL();
+            return ibll.GetDataTableAll(logAppendToForms, searchParam);
+        }
+
+
+
         /// <summary>
         /// GetUpdataDataTable
         /// </summary>
@@ -1692,6 +3232,8 @@ namespace BLL
             return ibll.GetDataTableAll(logAppendToForms, searchParam);
         }
         #endregion
+
+
 
         #region ExecuteScalar
         /// <summary>
@@ -1744,14 +3286,14 @@ namespace BLL
             {
                 logMessage = string.Format("【{0}_{1}】 {2} result:{3} 成功！ ", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo,result);
                 //LogMessage(logAppendToForms, true, logMessage, jobInfo.JobCode);
-                Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, jobInfo.IsDebug, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
+                Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms,true, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
                 return true;
             }
             else
             {
                 logMessage = string.Format("【{0}_{1}】 {2} result:{3} ", jobInfo.JobCode, jobInfo.JobName, jobInfo.JobInfo, result);
                 //LogError(logAppendToForms, true, logMessage, jobInfo.JobCode);
-                Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, jobInfo.IsDebug, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
+                Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, true, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
                 return false;
             }
         }
@@ -1783,6 +3325,80 @@ namespace BLL
             BLLFactory.FactoryBLL bllfact = new BLLFactory.FactoryBLL();
             Facade.ICommonBLL ibll = bllfact.CreateCommonBLL();
             return ibll.ErpWriteback(logAppendToForms, writebackParam);
+        }
+
+        private bool ErpWriteback(Log4netUtil.LogAppendToForms logAppendToForms,
+                                Model.JobEntity jobInfo,string writebackType, string type, string BillCodes, string WritebackInfo)
+        {
+            Model.WritebackParam writebackParam = new Model.WritebackParam();
+            writebackParam.TargetDatabase = jobInfo.TargetDatabase;
+            writebackParam.ProcedureName = jobInfo.WritebackProcedureName;
+            writebackParam.WritebackType = writebackType;
+            writebackParam.Type = type;
+            writebackParam.BillCodes = BillCodes;
+            writebackParam.WritebackInfo = WritebackInfo;
+            writebackParam.IsDebug = jobInfo.IsDebug;
+            writebackParam.Status = 1;
+            writebackParam.jobInfo = jobInfo;
+            BLLFactory.FactoryBLL bllfact = new BLLFactory.FactoryBLL();
+            Facade.ICommonBLL ibll = bllfact.CreateCommonBLL();
+            return ibll.ErpWriteback(logAppendToForms, writebackParam);
+        }
+        #endregion
+
+        #region ErpWriteback  Erp回写
+        /// <summary>
+        /// ErpWriteback  Erp回写
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <param name="type"></param>
+        /// <param name="BillCodes"></param>
+        /// <param name="WritebackInfo"></param>
+        /// <returns></returns>
+        private bool ErpWriteback1(Log4netUtil.LogAppendToForms logAppendToForms,
+                                Model.JobEntity jobInfo, string type, string BillCodes, string WritebackInfo)
+        {
+            Model.WritebackParam writebackParam = new Model.WritebackParam();
+            writebackParam.TargetDatabase = jobInfo.TargetDatabase;
+            writebackParam.ProcedureName = jobInfo.WritebackProcedureName;
+            writebackParam.WritebackType = jobInfo.WritebackType;
+            writebackParam.Type = type;
+            writebackParam.BillCodes = BillCodes;
+            writebackParam.WritebackInfo = WritebackInfo;
+            writebackParam.IsDebug = jobInfo.IsDebug;
+            writebackParam.Status = 1;
+            writebackParam.jobInfo = jobInfo;
+            BLLFactory.FactoryBLL bllfact = new BLLFactory.FactoryBLL();
+            Facade.ICommonBLL ibll = bllfact.CreateCommonBLL();
+            return ibll.ErpWriteback(logAppendToForms, writebackParam);
+        }
+        #endregion
+
+        #region ErpExecuteProcedure
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="jobInfo"></param>
+        /// <param name="writebackType"></param>
+        /// <returns></returns>
+        private bool ErpExecuteProcedure(Log4netUtil.LogAppendToForms logAppendToForms,
+                                Model.JobEntity jobInfo, string writebackType)
+        {
+            Model.WritebackParam writebackParam = new Model.WritebackParam();
+            writebackParam.TargetDatabase = jobInfo.TargetDatabase;
+            writebackParam.ProcedureName = jobInfo.WritebackProcedureName;
+            writebackParam.WritebackType = writebackType;
+            writebackParam.Type = string.Empty;
+            writebackParam.BillCodes = string.Empty;
+            writebackParam.WritebackInfo = string.Empty;
+            writebackParam.IsDebug = jobInfo.IsDebug;
+            writebackParam.Status = 1;
+            writebackParam.jobInfo = jobInfo;
+            BLLFactory.FactoryBLL bllfact = new BLLFactory.FactoryBLL();
+            Facade.ICommonBLL ibll = bllfact.CreateCommonBLL();
+            return ibll.ErpExecuteProcedure(logAppendToForms, writebackParam);
         }
         #endregion
 
@@ -2400,6 +4016,8 @@ namespace BLL
             ms.Position = 0;
             ms.Read(byteArray, 0, (int)ms.Length);
             ms.Close();
+            bmp.Dispose();
+            bmp = null;
             return Convert.ToBase64String(byteArray);
         }
         #endregion 
@@ -2481,6 +4099,11 @@ namespace BLL
                 dtResult.Columns.Add("orderId", typeof(string));
             if (!dtResult.Columns.Contains("orderRows"))
                 dtResult.Columns.Add("orderRows", typeof(int));
+            if (!dtResult.Columns.Contains("orderCode"))
+                dtResult.Columns.Add("orderCode", typeof(string));
+            if (!dtResult.Columns.Contains("erpGoodsIdlocal"))
+                dtResult.Columns.Add("erpGoodsIdlocal", typeof(string));
+
             try
             {
                 //修改数据列类型
@@ -2521,6 +4144,8 @@ namespace BLL
                     }
                     rowNew["orderId"] = orderId;
                     rowNew["orderRows"] = orderRows;
+                    rowNew["orderCode"] = orderCode;
+                    rowNew["erpGoodsIdlocal"] = rowNew["erpGoodsId"];
                     dtResult.Rows.Add(rowNew);
 
                 }
@@ -2597,6 +4222,85 @@ namespace BLL
                 logMessage = string.Format("【{0}_{1}】  订单Id:{2} ; UpdateOrderMain转换字段类型失败！ 原因：{3}", jobInfo.JobCode, jobInfo.JobName, orderId,ex.Message);
                 LogError(logAppendToForms, true, logMessage, jobInfo.JobCode);
                 return null;
+            }
+        }
+        #endregion
+
+        #region  ComparisonDate
+        /// <summary>
+        /// ComparisonDate
+        /// </summary>
+        /// <param name="strDateTime"></param>
+        /// <returns></returns>
+        private int ComparisonDate(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string endDate) //,string strDateTime)
+        {
+            DateTime dateEnd, dateNow;
+
+            try
+            {
+
+                string strDateNow = string.Format("{0:yyyyMMddHHmmss}", System.DateTime.Now);
+                //DateTime dateNet = DateTime.ParseExact(strDateNow, "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture);
+                string strDateTime = endDate.Replace("-", string.Empty).Replace(" ", string.Empty).Replace(":",string.Empty);
+                dateEnd = DateTime.ParseExact(strDateTime, "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture);  //授权期时间
+                dateNow = DateTime.ParseExact(strDateNow, "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture); ; //当前互联网时间
+
+                if (DateTime.Compare(dateEnd, dateNow) > 0)
+                    return 1;// DateTime.Compare(dateEnd, dateNow);
+                else
+                    return 0;
+            }
+            catch (Exception ex)
+            {
+                string logMessage = string.Format("比较日期失败，原因:{0} ", ex.Message);
+                Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, true, logMessage, string.Format(@"Api\{0}", jobInfo.JobCode));
+                return -1;
+            }
+        }
+        #endregion
+
+        #region OpenUrlDownloadFile 打开网址并下载文件
+        private  bool OpenUrlDownloadFile(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo,string url,string filename)
+        {
+            System.Net.HttpWebRequest Myrq = null;
+            System.Net.HttpWebResponse myrp = null;
+            System.IO.Stream st = null;
+            System.IO.Stream so = null;
+            try
+            {
+                Myrq = (System.Net.HttpWebRequest)System.Net.HttpWebRequest.Create(url);
+                myrp = (System.Net.HttpWebResponse)Myrq.GetResponse();
+                st = myrp.GetResponseStream();
+                so = new System.IO.FileStream(filename, System.IO.FileMode.Create);
+                byte[] by = new byte[1024];
+                int osize = st.Read(by, 0, (int)by.Length);
+                while (osize > 0)
+                {
+                    so.Write(by, 0, osize);
+                    osize = st.Read(by, 0, (int)by.Length);
+                }
+                so.Close();
+                st.Close();
+                myrp.Close();
+                Myrq.Abort();
+                return true;
+            }
+            catch (Exception e)
+            {
+                string strMsg = string.Format("Url:{0} ; filename :{1} 下载文件失败 原因：{2}", url, filename, e.Message);
+                LogError(logAppendToForms, true, strMsg, jobInfo.JobCode);
+                return false;
+            }
+            finally
+            {
+                if (so != null)
+                    so.Close();
+                if (st != null)
+                    st.Close();
+                if (myrp != null)
+                    myrp.Close();
+                if (Myrq != null)
+                    Myrq.Abort();
             }
         }
         #endregion

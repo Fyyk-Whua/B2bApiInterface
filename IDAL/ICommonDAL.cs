@@ -20,5 +20,7 @@ namespace IDAL
         int BulkCopyInsert(Log4netUtil.LogAppendToForms logAppendToForms, Model.JobEntity jobInfo, string tableName, string strSql);
 
         string ExecuteScalar(Log4netUtil.LogAppendToForms logAppendToForms, Model.SearchParam searchParam);
+
+        bool ErpExecuteProcedure(Log4netUtil.LogAppendToForms logAppendToForms, Model.WritebackParam writebackParam);
     }
 }

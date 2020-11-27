@@ -492,6 +492,22 @@ namespace BLL
         }
         #endregion
 
+        #region ErpWriteback
+        /// <summary>
+        /// ErpWriteback
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="writebackParam"></param>
+        /// <returns></returns>
+        public bool ErpExecuteProcedure(Log4netUtil.LogAppendToForms logAppendToForms, Model.WritebackParam writebackParam)
+        {
+            DALFactory.FactoryDAL fact = new DALFactory.FactoryDAL();
+            IDAL.ICommonDAL idal = fact.CreateCommonDAL();
+            return idal.ErpExecuteProcedure(logAppendToForms, writebackParam);
+        }
+        #endregion
+
+
 
         #region CallDtyApi
         /// <summary>

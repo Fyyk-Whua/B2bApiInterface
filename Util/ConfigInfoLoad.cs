@@ -8,6 +8,10 @@ namespace Util
     public class ConfigInfoLoad
     {
         #region  getConfigInfo
+        /// <summary>
+        /// getConfigInfo
+        /// </summary>
+        /// <returns></returns>
         public static Model.ConfigInfo GetConfigInfo()
         {
             return getConfigInfo();

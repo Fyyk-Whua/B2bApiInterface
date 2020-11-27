@@ -364,6 +364,64 @@ namespace DAL
         }
         #endregion
 
+        #region ErpExecuteProcedure
+        /// <summary>
+        /// ErpExecuteProcedure
+        /// </summary>
+        /// <param name="logAppendToForms"></param>
+        /// <param name="writebackParam"></param>
+        /// <returns></returns>
+        public bool ErpExecuteProcedure(Log4netUtil.LogAppendToForms logAppendToForms, Model.WritebackParam writebackParam)
+        {
+            string logMessage = string.Empty;
+            string procedureName = writebackParam.ProcedureName;
+            string targetDatabase = writebackParam.TargetDatabase;
+            IDAL.IDBHelper _idbHelper = DALFactory.DBHelperFactory.CreateInstance(targetDatabase);//创建接口
+            System.Data.Common.DbParameter[] cmdParams = null;
+            try
+            {
+                writebackParam.IsDebug = true;
+                int r = _idbHelper.ExecuteNonQuery(System.Data.CommandType.StoredProcedure, procedureName, targetDatabase, cmdParams);
+                if (r > 0)
+                {
+                    string jsonSql = Util.DbSqlLog.SqlToJson("0000", procedureName, cmdParams);
+                    logMessage = string.Format(" ErpExecuteProcedure 执行成功!!!{0}", string.Empty);
+                    Newtonsoft.Json.Linq.JObject resultJObject = new Newtonsoft.Json.Linq.JObject();
+                    resultJObject.Add("code", new Newtonsoft.Json.Linq.JValue("0000"));
+                    resultJObject.Add("msg", new Newtonsoft.Json.Linq.JValue(logMessage));
+                    resultJObject.Add("sql", new Newtonsoft.Json.Linq.JObject(Newtonsoft.Json.Linq.JObject.Parse(jsonSql)));
+                    logMessage = string.Format("【{0}_{1}】 {2}", writebackParam.jobInfo.JobCode, writebackParam.jobInfo.JobName.ToString(), Util.NewtonsoftCommon.SerializeObjToJson(resultJObject));
+                    Log4netUtil.Log4NetHelper.LogMessage(logAppendToForms, writebackParam.IsDebug, logMessage, @"Database");
+                    return true;
+                }
+                else
+                {
+                    string jsonSql = Util.DbSqlLog.SqlToJson("9999", procedureName, cmdParams);
+                    logMessage = string.Format("  ErpExecuteProcedure 执行失败!!!!{0}", string.Empty);
+                    Newtonsoft.Json.Linq.JObject resultJObject = new Newtonsoft.Json.Linq.JObject();
+                    resultJObject.Add("code", new Newtonsoft.Json.Linq.JValue("9999"));
+                    resultJObject.Add("msg", new Newtonsoft.Json.Linq.JValue(logMessage));
+                    resultJObject.Add("sql", new Newtonsoft.Json.Linq.JObject(Newtonsoft.Json.Linq.JObject.Parse(jsonSql)));
+                    logMessage = string.Format("【{0}_{1}】 {2}", writebackParam.jobInfo.JobCode, writebackParam.jobInfo.JobName.ToString(), Util.NewtonsoftCommon.SerializeObjToJson(resultJObject));
+                    Log4netUtil.Log4NetHelper.LogError(logAppendToForms, writebackParam.IsDebug, logMessage, @"Database");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                string jsonSql = Util.DbSqlLog.SqlToJson("9999", procedureName, cmdParams);
+                logMessage = string.Format("  ErpExecuteProcedure 执行失败!!!原因：{0};", ex.Message);
+                Newtonsoft.Json.Linq.JObject resultJObject = new Newtonsoft.Json.Linq.JObject();
+                resultJObject.Add("code", new Newtonsoft.Json.Linq.JValue("9999"));
+                resultJObject.Add("msg", new Newtonsoft.Json.Linq.JValue(logMessage));
+                resultJObject.Add("sql", new Newtonsoft.Json.Linq.JObject(Newtonsoft.Json.Linq.JObject.Parse(jsonSql)));
+                logMessage = string.Format("【{0}_{1}】 {2}", writebackParam.jobInfo.JobCode, writebackParam.jobInfo.JobName.ToString(), Util.NewtonsoftCommon.SerializeObjToJson(resultJObject));
+                Log4netUtil.Log4NetHelper.LogError(logAppendToForms, writebackParam.IsDebug, logMessage, @"Database");
+                return false;
+            }
+        }
+        #endregion
+
 
     }
 }

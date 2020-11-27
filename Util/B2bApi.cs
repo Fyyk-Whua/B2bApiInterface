@@ -82,6 +82,7 @@ namespace Util
         /// <param name="encryptKey"></param>
         public B2bApi(string domainName, string serviceName, string interfacePrefix,string signKey, string encryptKey)
         {
+            System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; //加上这一句
             this.DomainName = domainName;
             this.ServiceName = serviceName;
             this.InterfacePrefix = interfacePrefix;
@@ -183,6 +184,8 @@ namespace Util
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                if (url.Substring(0, 8) == "https://")
+                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
                 request.ContentType = "application/json";// "application/x-www-form-urlencoded";
                 request.Referer = url;
                 request.Accept = "*/*";
@@ -233,6 +236,9 @@ namespace Util
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                if (url.Substring(0, 8) == "https://")
+                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
+
                 request.ContentType = "application/json";// "application/x-www-form-urlencoded";  //"application/json";// "application/x-www-form-urlencoded";
                 request.Referer = url;
                 request.Accept = "*/*";
@@ -283,9 +289,9 @@ namespace Util
         }
         #endregion
 
-        #region CheckValidationResult
+        #region CheckValidationResult 添加https
         /// <summary>
-        /// CheckValidationResult
+        /// CheckValidationResult 添加https
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="certificate"></param>
@@ -294,8 +300,13 @@ namespace Util
         /// <returns></returns>
         private bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
-            throw new NotImplementedException();
+            return true; //总是接受     
+            //throw new NotImplementedException();
         }
+       
+        //private static readonly string DefaultUserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)";
+
+       
         #endregion 
 
         #region SignEncrypt Sign签名

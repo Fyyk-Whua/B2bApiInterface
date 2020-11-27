@@ -34,6 +34,8 @@ namespace Facade
 
         bool ErpWriteback(Log4netUtil.LogAppendToForms logAppendToForms, Model.WritebackParam writebackParam);
 
+        bool ErpExecuteProcedure(Log4netUtil.LogAppendToForms logAppendToForms, Model.WritebackParam writebackParam);
+
         int BulkInsertDatabase(Log4netUtil.LogAppendToForms logAppendToForms,
                                        Model.JobEntity jobInfo,
                                        System.Data.DataTable dt, string insertTableName);

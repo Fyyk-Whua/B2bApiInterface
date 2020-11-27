@@ -9,6 +9,18 @@ namespace Model
     public class Commodity
     {
         /// <summary>
+        /// 活动结束时间
+        /// </summary>
+        public string activityEndTime { get; set; }
+        /// <summary>
+        /// 活动开始时间
+        /// </summary>
+        public string activityStartTime { get; set; }
+        /// <summary>
+        /// 0正常1秒杀2特价
+        /// </summary>
+        public int activityType { get; set; }
+        /// <summary>
         /// 性状 20200722
         /// </summary>
         public string appearance { get; set; }

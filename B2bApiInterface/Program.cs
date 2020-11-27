@@ -16,9 +16,41 @@ namespace B2bApiInterface
         static void Main()
         {
 
-            
 
-           
+            //  string result = "{\"customerId\":\"fcc50855b5fa4d58acb9cce2a1157047\",\"loginToken\":\"b20347ddd95b48478ed76355b698281d\",\"password\":\"123456\",\"phone\":\"17786139501\",\"sign\":\"\",\"versionCode\":\"1.1.5\"}";
+            string result = "{\"loginToken\":\"b20347ddd95b48478ed76355b698281d\",\"password\":\"123456\",\"phone\":\"17786139501\",\"sign\":\"\",\"customerId\":\"fcc50855b5fa4d58acb9cce2a1157047\",\"versionCode\":\"1.1.5\"}";
+            Newtonsoft.Json.Linq.JObject resultJObject = Newtonsoft.Json.Linq.JObject.Parse(result);
+            string json = Util.NewtonsoftCommon.SerializeObjToJson(resultJObject);
+
+            string key = "FYYK.PSY.Inv"; //key
+            string orderJson = json;// Util.NewtonsoftCommon.StortJson(json, false); //排序
+            string sign = Util.FyykMD5FileUtil.GetMD5Hash(orderJson + key);  //md5
+
+            string b = "";
+            /*string path = @"D:\器械图片";
+            System.IO.DirectoryInfo root = new System.IO.DirectoryInfo(path);
+            System.IO.FileInfo[] files = root.GetFiles();
+
+            System.Data.DataTable dataTable = new System.Data.DataTable();
+            if (!dataTable.Columns.Contains("erpGoodsId"))
+                dataTable.Columns.Add("erpGoodsId", typeof(string));
+            if (!dataTable.Columns.Contains("fileName"))
+                dataTable.Columns.Add("fileName", typeof(string));
+            if (!dataTable.Columns.Contains("imageType"))
+                dataTable.Columns.Add("imageType", typeof(string));
+            foreach (var item in files)
+            {
+                string fileNameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(item.FullName.Trim());// 没有扩展名的文件名 
+                System.Data.DataRow dr2 = dataTable.NewRow();
+                string filename1 = fileNameWithoutExtension.Substring(0, 11);
+                dr2[0] = filename1;// fileNameWithoutExtension.Substring(0, 11);
+                dr2[1] = fileNameWithoutExtension.Trim();
+                dr2[2] = fileNameWithoutExtension.Replace(filename1, "").Replace("-","");
+                dataTable.Rows.Add(dr2);
+
+            }*/
+
+
             Application.EnableVisualStyles();
 
             Application.SetCompatibleTextRenderingDefault(false);

@@ -64,6 +64,8 @@
             this.tsbtnStop = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.rtxLog = new System.Windows.Forms.RichTextBox();
+            this.timer2 = new System.Windows.Forms.Timer(this.components);
+            this.timer3 = new System.Windows.Forms.Timer(this.components);
             this.cmsMain.SuspendLayout();
             this.MainMenu.SuspendLayout();
             this.MainStatusStrip.SuspendLayout();
@@ -89,32 +91,32 @@
             this.toolStripMenuItem3,
             this.tsmiCloseWindow});
             this.cmsMain.Name = "cmsMain";
-            this.cmsMain.Size = new System.Drawing.Size(254, 156);
+            this.cmsMain.Size = new System.Drawing.Size(147, 92);
             // 
             // tsmiStart
             // 
             this.tsmiStart.Name = "tsmiStart";
-            this.tsmiStart.Size = new System.Drawing.Size(253, 38);
+            this.tsmiStart.Size = new System.Drawing.Size(146, 22);
             this.tsmiStart.Text = "启动";
             this.tsmiStart.Click += new System.EventHandler(this.tsmiStart_Click);
             // 
             // tsmiStop
             // 
             this.tsmiStop.Name = "tsmiStop";
-            this.tsmiStop.Size = new System.Drawing.Size(253, 38);
+            this.tsmiStop.Size = new System.Drawing.Size(146, 22);
             this.tsmiStop.Text = "停止";
             this.tsmiStop.Click += new System.EventHandler(this.tsmiStop_Click);
             // 
             // toolStripMenuItem3
             // 
             this.toolStripMenuItem3.Name = "toolStripMenuItem3";
-            this.toolStripMenuItem3.Size = new System.Drawing.Size(253, 38);
+            this.toolStripMenuItem3.Size = new System.Drawing.Size(146, 22);
             this.toolStripMenuItem3.Text = "--------------";
             // 
             // tsmiCloseWindow
             // 
             this.tsmiCloseWindow.Name = "tsmiCloseWindow";
-            this.tsmiCloseWindow.Size = new System.Drawing.Size(253, 38);
+            this.tsmiCloseWindow.Size = new System.Drawing.Size(146, 22);
             this.tsmiCloseWindow.Text = "退出";
             this.tsmiCloseWindow.Click += new System.EventHandler(this.tsmiCloseWindow_Click);
             // 
@@ -128,8 +130,7 @@
             this.MainMenu.Location = new System.Drawing.Point(0, 0);
             this.MainMenu.MdiWindowListItem = this.ToptsmWin;
             this.MainMenu.Name = "MainMenu";
-            this.MainMenu.Padding = new System.Windows.Forms.Padding(6, 4, 0, 4);
-            this.MainMenu.Size = new System.Drawing.Size(2112, 43);
+            this.MainMenu.Size = new System.Drawing.Size(722, 25);
             this.MainMenu.TabIndex = 44;
             this.MainMenu.Text = "menuStrip1";
             this.MainMenu.ItemAdded += new System.Windows.Forms.ToolStripItemEventHandler(this.MainMenu_ItemAdded);
@@ -139,13 +140,13 @@
             this.ToptsmWin.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.tsmExit});
             this.ToptsmWin.Name = "ToptsmWin";
-            this.ToptsmWin.Size = new System.Drawing.Size(114, 38);
+            this.ToptsmWin.Size = new System.Drawing.Size(64, 21);
             this.ToptsmWin.Text = "窗口(&W)";
             // 
             // tsmExit
             // 
             this.tsmExit.Name = "tsmExit";
-            this.tsmExit.Size = new System.Drawing.Size(325, 38);
+            this.tsmExit.Size = new System.Drawing.Size(115, 22);
             this.tsmExit.Text = "退出(&E)";
             this.tsmExit.Click += new System.EventHandler(this.tsmExit_Click);
             // 
@@ -164,10 +165,9 @@
             this.toolStripStatusLabel11,
             this.toolStripStatusLabel9,
             this.toolStripStatusLabel10});
-            this.MainStatusStrip.Location = new System.Drawing.Point(0, 892);
+            this.MainStatusStrip.Location = new System.Drawing.Point(0, 414);
             this.MainStatusStrip.Name = "MainStatusStrip";
-            this.MainStatusStrip.Padding = new System.Windows.Forms.Padding(2, 0, 28, 0);
-            this.MainStatusStrip.Size = new System.Drawing.Size(2112, 40);
+            this.MainStatusStrip.Size = new System.Drawing.Size(722, 26);
             this.MainStatusStrip.TabIndex = 52;
             this.MainStatusStrip.Text = "statusStrip1";
             // 
@@ -175,58 +175,58 @@
             // 
             this.toolStripStatusLabel1.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Left;
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            this.toolStripStatusLabel1.Size = new System.Drawing.Size(32, 35);
+            this.toolStripStatusLabel1.Size = new System.Drawing.Size(19, 21);
             this.toolStripStatusLabel1.Text = "1";
             // 
             // toolStripStatusLabel2
             // 
             this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
-            this.toolStripStatusLabel2.Size = new System.Drawing.Size(28, 35);
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(15, 21);
             this.toolStripStatusLabel2.Text = "2";
             // 
             // toolStripStatusLabel3
             // 
             this.toolStripStatusLabel3.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Left;
             this.toolStripStatusLabel3.Name = "toolStripStatusLabel3";
-            this.toolStripStatusLabel3.Size = new System.Drawing.Size(32, 35);
+            this.toolStripStatusLabel3.Size = new System.Drawing.Size(19, 21);
             this.toolStripStatusLabel3.Text = "3";
             // 
             // toolStripStatusLabel4
             // 
             this.toolStripStatusLabel4.Name = "toolStripStatusLabel4";
-            this.toolStripStatusLabel4.Size = new System.Drawing.Size(28, 35);
+            this.toolStripStatusLabel4.Size = new System.Drawing.Size(15, 21);
             this.toolStripStatusLabel4.Text = "4";
             // 
             // toolStripStatusLabel5
             // 
             this.toolStripStatusLabel5.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Left;
             this.toolStripStatusLabel5.Name = "toolStripStatusLabel5";
-            this.toolStripStatusLabel5.Size = new System.Drawing.Size(32, 35);
+            this.toolStripStatusLabel5.Size = new System.Drawing.Size(19, 21);
             this.toolStripStatusLabel5.Text = "5";
             // 
             // toolStripStatusLabel6
             // 
             this.toolStripStatusLabel6.Name = "toolStripStatusLabel6";
-            this.toolStripStatusLabel6.Size = new System.Drawing.Size(28, 35);
+            this.toolStripStatusLabel6.Size = new System.Drawing.Size(15, 21);
             this.toolStripStatusLabel6.Text = "6";
             // 
             // toolStripStatusLabel7
             // 
             this.toolStripStatusLabel7.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Left;
             this.toolStripStatusLabel7.Name = "toolStripStatusLabel7";
-            this.toolStripStatusLabel7.Size = new System.Drawing.Size(32, 35);
+            this.toolStripStatusLabel7.Size = new System.Drawing.Size(19, 21);
             this.toolStripStatusLabel7.Text = "7";
             // 
             // toolStripStatusLabel8
             // 
             this.toolStripStatusLabel8.Name = "toolStripStatusLabel8";
-            this.toolStripStatusLabel8.Size = new System.Drawing.Size(28, 35);
+            this.toolStripStatusLabel8.Size = new System.Drawing.Size(15, 21);
             this.toolStripStatusLabel8.Text = "8";
             // 
             // toolStripStatusLabel11
             // 
             this.toolStripStatusLabel11.Name = "toolStripStatusLabel11";
-            this.toolStripStatusLabel11.Size = new System.Drawing.Size(1710, 35);
+            this.toolStripStatusLabel11.Size = new System.Drawing.Size(501, 21);
             this.toolStripStatusLabel11.Spring = true;
             this.toolStripStatusLabel11.Text = "11";
             // 
@@ -234,13 +234,13 @@
             // 
             this.toolStripStatusLabel9.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Left;
             this.toolStripStatusLabel9.Name = "toolStripStatusLabel9";
-            this.toolStripStatusLabel9.Size = new System.Drawing.Size(39, 35);
+            this.toolStripStatusLabel9.Size = new System.Drawing.Size(23, 21);
             this.toolStripStatusLabel9.Text = " 9";
             // 
             // toolStripStatusLabel10
             // 
             this.toolStripStatusLabel10.Name = "toolStripStatusLabel10";
-            this.toolStripStatusLabel10.Size = new System.Drawing.Size(93, 35);
+            this.toolStripStatusLabel10.Size = new System.Drawing.Size(47, 21);
             this.toolStripStatusLabel10.Text = "time10";
             // 
             // timer1
@@ -253,15 +253,13 @@
             // 
             // toolStripContainer1.ContentPanel
             // 
-            this.toolStripContainer1.ContentPanel.Margin = new System.Windows.Forms.Padding(6);
-            this.toolStripContainer1.ContentPanel.Size = new System.Drawing.Size(2112, 116);
+            this.toolStripContainer1.ContentPanel.Size = new System.Drawing.Size(722, 33);
             this.toolStripContainer1.Dock = System.Windows.Forms.DockStyle.Top;
             this.toolStripContainer1.LeftToolStripPanelVisible = false;
-            this.toolStripContainer1.Location = new System.Drawing.Point(0, 43);
-            this.toolStripContainer1.Margin = new System.Windows.Forms.Padding(6);
+            this.toolStripContainer1.Location = new System.Drawing.Point(0, 25);
             this.toolStripContainer1.Name = "toolStripContainer1";
             this.toolStripContainer1.RightToolStripPanelVisible = false;
-            this.toolStripContainer1.Size = new System.Drawing.Size(2112, 166);
+            this.toolStripContainer1.Size = new System.Drawing.Size(722, 83);
             this.toolStripContainer1.TabIndex = 54;
             this.toolStripContainer1.Text = "toolStripContainer1";
             // 
@@ -306,7 +304,7 @@
             this.tsbtnStart.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsbtnStart.Name = "tsbtnStart";
             this.tsbtnStart.RightToLeft = System.Windows.Forms.RightToLeft.No;
-            this.tsbtnStart.Size = new System.Drawing.Size(131, 36);
+            this.tsbtnStart.Size = new System.Drawing.Size(84, 47);
             this.tsbtnStart.Text = "启动(&A)";
             this.tsbtnStart.Click += new System.EventHandler(this.tsbtnStart_Click);
             // 
@@ -321,7 +319,7 @@
             this.tsbtnClear.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.tsbtnClear.ImageTransparentColor = System.Drawing.Color.White;
             this.tsbtnClear.Name = "tsbtnClear";
-            this.tsbtnClear.Size = new System.Drawing.Size(180, 36);
+            this.tsbtnClear.Size = new System.Drawing.Size(109, 36);
             this.tsbtnClear.Text = "清除日志(&D)";
             this.tsbtnClear.Click += new System.EventHandler(this.tsbtnClear_Click);
             // 
@@ -336,7 +334,7 @@
             this.tsbtnVisible.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.tsbtnVisible.ImageTransparentColor = System.Drawing.Color.White;
             this.tsbtnVisible.Name = "tsbtnVisible";
-            this.tsbtnVisible.Size = new System.Drawing.Size(180, 36);
+            this.tsbtnVisible.Size = new System.Drawing.Size(109, 36);
             this.tsbtnVisible.Text = "隐藏日志(&D)";
             this.tsbtnVisible.Click += new System.EventHandler(this.tsbtnVisible_Click);
             // 
@@ -351,7 +349,7 @@
             this.tsbtnStop.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.tsbtnStop.ImageTransparentColor = System.Drawing.Color.White;
             this.tsbtnStop.Name = "tsbtnStop";
-            this.tsbtnStop.Size = new System.Drawing.Size(128, 36);
+            this.tsbtnStop.Size = new System.Drawing.Size(83, 36);
             this.tsbtnStop.Text = "停止(&S)";
             this.tsbtnStop.Click += new System.EventHandler(this.tsbtnStop_Click);
             // 
@@ -364,28 +362,34 @@
             // 
             this.rtxLog.BackColor = System.Drawing.SystemColors.WindowFrame;
             this.rtxLog.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.rtxLog.Location = new System.Drawing.Point(0, 209);
-            this.rtxLog.Margin = new System.Windows.Forms.Padding(6);
+            this.rtxLog.Location = new System.Drawing.Point(0, 108);
             this.rtxLog.Name = "rtxLog";
             this.rtxLog.ReadOnly = true;
-            this.rtxLog.Size = new System.Drawing.Size(2112, 683);
+            this.rtxLog.Size = new System.Drawing.Size(722, 306);
             this.rtxLog.TabIndex = 55;
             this.rtxLog.Text = "";
             // 
+            // timer2
+            // 
+            this.timer2.Interval = 1000;
+            // 
+            // timer3
+            // 
+            this.timer3.Interval = 1000;
+            // 
             // frmMain
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 24F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Window;
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-            this.ClientSize = new System.Drawing.Size(2112, 932);
+            this.ClientSize = new System.Drawing.Size(722, 440);
             this.Controls.Add(this.rtxLog);
             this.Controls.Add(this.toolStripContainer1);
             this.Controls.Add(this.MainStatusStrip);
             this.Controls.Add(this.MainMenu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.IsMdiContainer = true;
-            this.Margin = new System.Windows.Forms.Padding(6);
             this.Name = "frmMain";
             this.Text = "B2B电商平台同步接口";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
@@ -442,6 +446,8 @@
         private System.Windows.Forms.ToolStripButton tsbtnClear;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem3;
+        private System.Windows.Forms.Timer timer2;
+        private System.Windows.Forms.Timer timer3;
         //private System.Windows.Forms.SplitContainer splMain;
         //private System.Windows.Forms.SplitContainer splTool;
         //private Util.PasswordTextBox rbtnS;

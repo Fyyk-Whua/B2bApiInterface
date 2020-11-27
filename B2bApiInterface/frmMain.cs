@@ -50,7 +50,21 @@ namespace B2bApiInterface
         private void frmMain_Load(object sender, EventArgs e)
         {
             System.Windows.Forms.Timer timer1 = new System.Windows.Forms.Timer();
+           
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            this.timer3.Interval = 30 * 1000;
+            this.timer3.Tick += new System.EventHandler(this.timer3_Tick);
+            this.timer3.Start();
+            string isClearFaceLogStr = string.IsNullOrEmpty(Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, "Login", "IsClearFaceLog", null)) ? "否" : Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile , "Login", "IsClearFaceLog", null);
+            bool isClearFaceLog = string.Equals(isClearFaceLogStr, "是") ? true : false;
+            if (isClearFaceLog)
+            {
+                string clearFaceLogIntervalStr = string.IsNullOrEmpty(Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, "Login", "ClearFaceLogInterval", null)) ? "60" : Util.INIOperationClass.INIGetStringValue(Util.DalConst._ConfigFile, "Login", "ClearFaceLogInterval", null);
+                int clearFaceLogInterval = Util.Common.IsInt(clearFaceLogIntervalStr) ? Convert.ToInt32(clearFaceLogIntervalStr) : 60;
+                this.timer2.Interval = 60 * 1000;
+                this.timer2.Tick += new System.EventHandler(this.timer2_Tick);
+                this.timer2.Start();
+            }
             _ConfigInfo = Util.ConfigInfoLoad.GetConfigInfo();
             _LogAppendToForms = new Log4netUtil.LogAppendToForms();  //
             _LogAppendToForms._LogAppendDelegate = DisplayJobtimes;
@@ -258,7 +272,7 @@ namespace B2bApiInterface
         }
         #endregion
 
-   
+
 
         #region timer1_Tick 改新任务栏时间
         /// <summary>
@@ -269,6 +283,30 @@ namespace B2bApiInterface
         private void timer1_Tick(object sender, EventArgs e)
         {
             this.toolStripStatusLabel10.Text = System.DateTime.Now.ToString("T");
+        }
+        #endregion
+
+        #region timer2_Tick 定时清除界面日志
+        /// <summary>
+        /// timer2_Tick 定时清除界面日志
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            this.rtxLog.Clear();
+        }
+        #endregion
+
+        #region timer3_Tick 定时回收内存
+        /// <summary>
+        ///  timer3_Tick 定时回收内存
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void timer3_Tick(object sender, EventArgs e)
+        {
+            ClearMemory();
         }
         #endregion
 
@@ -391,7 +429,11 @@ namespace B2bApiInterface
                             item.EnterpriseId = _ConfigInfo.EnterpriseId;
                             item.EnterpriseName = _ConfigInfo.EnterpriseName;
                             //item.IsDebug = _ConfigInfo.IsDebug;
-                            item.StrConfigInfo  =Util.NewtonsoftCommon.SerializeObjToJson(_ConfigInfo);
+                            var configInfo = _ConfigInfo;
+                            var jobinfoItem = new List<Model.JobEntity>();
+                            jobinfoItem.Add(item);
+                            configInfo.JobEntityList = jobinfoItem;
+                            item.StrConfigInfo  =Util.NewtonsoftCommon.SerializeObjToJson(configInfo);
                             GetScheduleJob(item);
                         }
                         this.tsmiStop.Enabled = true;
@@ -553,17 +595,21 @@ namespace B2bApiInterface
         /// <param name="msg"></param>
         private void DisplayJobtimes(Color color, string msg)
         {
+           
             this.rtxLog.BeginInvoke(new Action(() =>
             {
+
                 rtxLog.SelectionColor = color;
                 //rtxLog.AppendText("\r\n");
-                rtxLog.AppendText(string.Format("{0}{1}{2}",">>>",msg.ToString(),"\r\n"));
+                rtxLog.AppendText(string.Format("{0}{1}{2}", ">>>", msg.ToString(), "\r\n"));
                 //rtxLog.ScrollToCaret();
                 rtxLog.Focus();//让文本框获取焦点 
                 rtxLog.Select(rtxLog.TextLength, 0);//设置光标的位置到文本尾
                 rtxLog.ScrollToCaret();//滚动到控件光标处
 
+
             }));
+           
         }
         #endregion
 
@@ -585,9 +631,29 @@ namespace B2bApiInterface
 
         #endregion
 
+
+        #region 内存回收
+        [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
+        public static extern int SetProcessWorkingSetSize(IntPtr process, int minSize, int maxSize);
+        /// <summary>
+        /// 释放内存
+        /// </summary>
+        public static void ClearMemory()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                frmMain.SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
+            }
+        }
         #endregion
 
-       
+
+
+        #endregion
+
+
     }
 
 
